@@ -1,0 +1,10 @@
+.container {
+  background-color: var(--sbb-color-milk);
+  display:flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+app-device {
+  margin: 1em 1em 0;
+}

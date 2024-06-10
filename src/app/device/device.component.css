@@ -1,0 +1,15 @@
+@import '@sbb-esta/lyne-elements/standard-theme.css';
+
+
+sbb-step-label {
+    pointer-events: none;
+}
+
+.buttons {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.buttons sbb-toggle-check {
+
+}

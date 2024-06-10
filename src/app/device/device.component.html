@@ -1,0 +1,73 @@
+<sbb-card size="xl" color="white">
+    <sbb-title level="4">{{ name() }}</sbb-title>
+
+    <sbb-stepper
+        #stepper
+        aria-label="Purpose of this flow"
+        selected-index="0"
+        orientation="horizontal"
+        horizontal-from="unset"
+    >
+        <sbb-step-label>Kabelverbindung</sbb-step-label>
+        <sbb-step>
+            <sbb-notification
+                    *ngIf="state() === State.Authorizing"
+                    style="--sbb-notification-margin: 0 0 var(--sbb-spacing-fixed-4x) 0;"
+                    title-content="Zugriff nicht genehmigt"
+                    type="error"
+                    size="m"
+                    animation="close"
+                    readonly
+            >
+                Der PC kann keine Verbindung mit der Brille herstellen. Bitte Brille aufsetzen und Genehmigung im Dialog erteilen. (Mit Häkchen bei "Immer erlauben.")
+            </sbb-notification>
+            <div
+                    tabindex="0"
+                    class="sbb-focus-outline"
+                    style="margin-block-end: var(--sbb-spacing-fixed-4x)"
+            >
+                Bitte verbinde die Brille per Kabel mit dem PC, damit eine Wireless-Verbindung hergestellt werden kann.
+            </div>
+
+        </sbb-step>
+
+        <sbb-step-label>Wireless-Verbindung</sbb-step-label>
+        <sbb-step>
+            <div
+                    tabindex="0"
+                    class="sbb-focus-outline"
+                    style="margin-block-end: var(--sbb-spacing-fixed-4x)"
+            >
+                <p>
+                    <sbb-loading-indicator
+                            variant="circle"
+                            size="l"
+                            color="default"
+                    ></sbb-loading-indicator>
+                    Verbindung wird hergestellt...
+                </p>
+            </div>
+        </sbb-step>
+
+        <sbb-step-label>Fertig</sbb-step-label>
+        <sbb-step>
+            <div
+                    tabindex="0"
+                    class="sbb-focus-outline"
+                    style="margin-block-end: var(--sbb-spacing-fixed-4x)"
+            >
+                Das Gerät ist bereit zum Streamen.
+            </div>
+            <div class="buttons">
+                <sbb-button size="m" (click)="startMirror()" [disabled]="isMirroring()">
+                    Videostream öffnen
+                </sbb-button>
+
+                <sbb-toggle-check value="Value" name="name" label-position="after">
+                    App laufen lassen
+                </sbb-toggle-check>
+            </div>
+        </sbb-step>
+
+    </sbb-stepper>
+</sbb-card>
