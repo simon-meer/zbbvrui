@@ -19,7 +19,8 @@
                     animation="close"
                     readonly
             >
-                Der PC kann keine Verbindung mit der Brille herstellen. Bitte Brille aufsetzen und Genehmigung im Dialog erteilen. (Mit Häkchen bei "Immer erlauben.")
+                Der PC kann keine Verbindung mit der Brille herstellen. Bitte Brille aufsetzen und Genehmigung im Dialog
+                erteilen. (Mit Häkchen bei "Immer erlauben.")
             </sbb-notification>
             <div
                     tabindex="0"
@@ -56,17 +57,21 @@
                     class="sbb-focus-outline"
                     style="margin-block-end: var(--sbb-spacing-fixed-4x)"
             >
-                Das Gerät ist bereit zum Streamen.
+                @if (localDevice()) {
+                    Das Gerät ist bereit zum Streamen und kann ausgesteckt werden.
+                } @else {
+                    Das Gerät ist bereit zum Streamen.
+                }
             </div>
             <div class="buttons">
                 <sbb-toggle-check
-                        #mirrorCheck
-                        [checked]="mirroringActivated()"
-                        (change)="mirroringActivated.set(mirrorCheck.checked)"
-                        size="s"
-                        value="Value"
-                        name="keepMirroring"
-                        label-position="after"
+                    #mirrorCheck
+                    [checked]="mirroringActivated()"
+                    (change)="mirroringActivated.set(mirrorCheck.checked)"
+                    size="s"
+                    value="Value"
+                    name="keepMirroring"
+                    label-position="after"
                 >
                     <sbb-icon slot="icon" name="eye-small"></sbb-icon>
                     Spiegelung

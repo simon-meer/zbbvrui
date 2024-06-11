@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::net::Ipv4Addr;
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
@@ -167,6 +168,7 @@ async fn launch_app(id: String, package: String) -> Result<String, ZBBError> {
     Ok(result)
 }
 
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 fn main() {
     tauri::Builder::default()
@@ -193,7 +195,9 @@ fn main() {
                 .resolve_resource("scrcpy/adb.exe")
                 .ok_or(ZBBError::ADB("ADB nicht gefunden".to_string())).expect("ADB not found");
 
-            Command::new(adb_exe).output().expect("Unable to start ADB");
+            Command::new(adb_exe).creation_flags(
+                CREATE_NO_WINDOW
+            ).output().expect("Unable to start ADB");
 
             Ok(())
         })
