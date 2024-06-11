@@ -2,16 +2,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::net::Ipv4Addr;
+use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Position};
 
 use crate::scrcpy::ScrCpy;
 use adb_client::AdbTcpConnection;
 use log::{info, log};
 use tauri_plugin_log::LogTarget;
+use window_manager::WindowError;
 
 use crate::structs::{LocalDevice, ZBBError};
 
@@ -20,8 +22,19 @@ mod structs;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+fn get_adb_path(app_handle: AppHandle) -> Result<PathBuf, ZBBError> {
+    app_handle
+        .path_resolver()
+        .resolve_resource("scrcpy/adb.exe")
+        .ok_or(ZBBError::ADB("ADB nicht gefunden".to_string()))
+}
+
+#[tauri::command]
+fn get_scrcpy_path(app_handle: AppHandle) -> Result<PathBuf, ZBBError> {
+    app_handle
+        .path_resolver()
+        .resolve_resource("scrcpy/scrcpy.exe")
+        .ok_or(ZBBError::ADB("ADB nicht gefunden".to_string()))
 }
 
 #[tauri::command]
@@ -35,6 +48,16 @@ fn get_devices() -> Result<Vec<LocalDevice>, ZBBError> {
         .collect::<Vec<_>>();
 
     Ok(result)
+}
+
+#[tauri::command]
+async fn get_window_position(pid: u32) -> Result<window_manager::Position, WindowError> {
+    window_manager::get_window_position(pid)
+}
+
+#[tauri::command]
+async fn set_window_position(pid: u32, position: window_manager::Position) -> Result<(), WindowError> {
+    window_manager::set_window_position(pid, position)
 }
 
 #[tauri::command]
@@ -76,7 +99,7 @@ async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<
         );
 
         for _ in 0..5 {
-            std::thread::sleep(Duration::from_millis(1000));
+            async_std::task::sleep(Duration::from_millis(1000)).await;
 
             if get_devices()?.iter().any(|it| &it.identifier == &id) {
                 break;
@@ -129,14 +152,27 @@ fn main() {
             get_devices,
             connect_device,
             get_ip,
-            open_stream
+            open_stream,
+            get_adb_path,
+            get_scrcpy_path,
+            get_window_position,
+            set_window_position
         ])
         .plugin(
             tauri_plugin_log::Builder::default()
                 .targets([LogTarget::LogDir, LogTarget::Stdout, LogTarget::Webview])
                 .build(),
         )
-        .setup(|app| Ok(()))
+        .setup(|app| {
+            let adb_exe = app
+                .path_resolver()
+                .resolve_resource("scrcpy/adb.exe")
+                .ok_or(ZBBError::ADB("ADB nicht gefunden".to_string())).expect("ADB not found");
+
+            Command::new(adb_exe).output().expect("Unable to start ADB");
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

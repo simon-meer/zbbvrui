@@ -59,9 +59,18 @@
                 Das Gerät ist bereit zum Streamen.
             </div>
             <div class="buttons">
-                <sbb-button size="m" (click)="startMirror()" [disabled]="isMirroring()">
-                    Videostream öffnen
-                </sbb-button>
+                <sbb-toggle-check
+                        #mirrorCheck
+                        [checked]="mirroringActivated()"
+                        (change)="mirroringActivated.set(mirrorCheck.checked)"
+                        size="s"
+                        value="Value"
+                        name="name"
+                        label-position="after"
+                >
+                    <sbb-icon slot="icon" name="eye-small"></sbb-icon>
+                    Spiegelung
+                </sbb-toggle-check>
 
                 <sbb-toggle-check value="Value" name="name" label-position="after">
                     App laufen lassen

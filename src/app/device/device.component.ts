@@ -1,4 +1,14 @@
-import {Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, signal, ViewChild} from '@angular/core';
+import {
+    Component,
+    computed,
+    CUSTOM_ELEMENTS_SCHEMA,
+    effect,
+    ElementRef,
+    input,
+    OnInit,
+    signal,
+    ViewChild
+} from '@angular/core';
 
 import '@sbb-esta/lyne-elements/card.js';
 import '@sbb-esta/lyne-elements/title.js';
@@ -7,11 +17,15 @@ import '@sbb-esta/lyne-elements/loading-indicator.js';
 import '@sbb-esta/lyne-elements/toggle-check.js';
 import '@sbb-esta/lyne-elements/notification.js';
 import {DeviceService} from "../device.service";
-import {distinctUntilChanged, filter, map} from "rxjs";
+import {distinctUntilChanged, filter, finalize, lastValueFrom, map, takeLast, tap} from "rxjs";
 import {Device, DeviceState} from "../../domain/device.model";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {SbbStepperElement} from "@sbb-esta/lyne-elements/stepper.js";
 import {NgIf} from "@angular/common";
+import {ScrcpyService} from "../scrcpy.service";
+import {Child} from "@tauri-apps/api/shell";
+import {SettingsService} from "../settings.service";
+import {Position} from "../../domain/position.model";
 
 enum State {
     WaitingForDevice,
@@ -30,7 +44,7 @@ enum State {
     templateUrl: './device.component.html',
     styleUrl: './device.component.css'
 })
-export class DeviceComponent {
+export class DeviceComponent implements OnInit {
     public name = input.required<string>();
     public id = input.required<string>();
     public port = input.required<number>();
@@ -39,6 +53,12 @@ export class DeviceComponent {
     public remoteDevice = signal<Device | undefined>(undefined);
     public isMirroring = signal(false);
     public isBusy = signal(false);
+    public mirroringActivated = signal(false);
+    public enforceAppActivated = signal(false);
+    public scrcpyProcess = signal<undefined | Child>(undefined);
+    public lastPosition = signal<Position | undefined>(undefined);
+
+    private _syncingSettings = true;
 
     public state = computed(() => {
         const remote = this.remoteDevice();
@@ -66,8 +86,11 @@ export class DeviceComponent {
     @ViewChild('stepper')
     private _stepper!: ElementRef<SbbStepperElement>;
 
-
-    constructor(private _deviceService: DeviceService) {
+    constructor(
+        private _deviceService: DeviceService,
+        private _scrcpyService: ScrcpyService,
+        private _settingsService: SettingsService
+    ) {
         this._deviceService.observeDevices().pipe(
             takeUntilDestroyed(),
             filter(_ => !this.isBusy()),
@@ -97,6 +120,55 @@ export class DeviceComponent {
         }, {
             allowSignalWrites: true
         });
+
+        effect(() => {
+            console.log("OK", this.mirroringActivated(), this.state());
+            if (this.mirroringActivated() && this.state() == State.Ready) {
+                this.startMirror();
+            } else if (this.isMirroring()) {
+                this.scrcpyProcess()?.kill().catch(e => {
+                    console.error(e);
+                });
+            }
+        }, {
+            allowSignalWrites: true
+        });
+
+        effect(() => {
+            if (this._syncingSettings) return;
+            console.log('update settings');
+
+            const settings = this._settingsService.getSettings(this.id());
+
+            settings.ip = this.ip();
+            settings.keepAppRunning = this.enforceAppActivated();
+            settings.keepMirroring = this.mirroringActivated();
+            settings.lastWindowPosition = this.lastPosition();
+
+            console.log('update settings', settings);
+
+            this._settingsService.setSettings(settings);
+        });
+    }
+
+    ngOnInit(): void {
+        this.applySettings();
+    }
+
+    private applySettings() {
+        this._syncingSettings = true;
+        try {
+            const settings = this._settingsService.getSettings(this.id());
+
+            this.ip.set(settings.ip);
+            this.mirroringActivated.set(settings.keepMirroring);
+            this.enforceAppActivated.set(settings.keepAppRunning);
+            this.lastPosition.set(settings.lastWindowPosition);
+
+            console.log('loaded settings', settings);
+        } finally {
+            this._syncingSettings = false;
+        }
     }
 
     private extractDevices(devices: Device[]): [Device | undefined, Device | undefined] {
@@ -118,11 +190,31 @@ export class DeviceComponent {
         }
 
         this.isMirroring.set(true);
-        try {
-            await this._deviceService.mirror(this.ip()!);
-        } finally {
-            this.isMirroring.set(false);
-        }
+        this._scrcpyService.spawnScrcpy(this.ip()!, this.lastPosition()).pipe(
+            finalize(() => {
+                this.isMirroring.set(false);
+                this.scrcpyProcess.set(undefined);
+            })
+        ).subscribe((e) => {
+            switch (e.type) {
+                case "process":
+                    console.log("set prorcess", e.process);
+                    this.scrcpyProcess.set(e.process);
+                    break;
+                case "stream":
+                    if (e.pipe === 'stdout') {
+                        console.log(e.content);
+                    } else {
+                        console.error(e.content);
+                    }
+                    break;
+                case "window":
+                    console.log(e.position);
+                    this.lastPosition.set(e.position);
+                    break;
+
+            }
+        });
     }
 
     protected readonly State = State;

@@ -66,8 +66,6 @@ impl From<Device> for LocalDevice {
     }
 }
 
-
-
 #[derive(Debug, Serialize)]
 pub enum ZBBError {
     ADB(String),
