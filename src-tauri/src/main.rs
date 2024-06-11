@@ -12,6 +12,7 @@ use tauri::{AppHandle, Position};
 use crate::scrcpy::ScrCpy;
 use adb_client::AdbTcpConnection;
 use log::{info, log};
+use tauri::api::Error::Utf8;
 use tauri_plugin_log::LogTarget;
 use window_manager::WindowError;
 
@@ -146,6 +147,27 @@ async fn open_stream(id: String, app_handle: AppHandle) -> Result<(), ZBBError> 
     ScrCpy::open_window(&id, &app_handle)
 }
 
+#[tauri::command]
+async fn is_running(id: String, package: String) -> Result<(bool), ZBBError> {
+    let serial = Some(id);
+    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+
+    let result = adb.shell_command(&serial, vec!["pidof".into(), package])?;
+
+    Ok(!result.is_empty())
+}
+
+#[tauri::command]
+async fn launch_app(id: String, package: String) -> Result<String, ZBBError> {
+    let serial = Some(id);
+    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+
+    let bytes = adb.shell_command(&serial, vec!["monkey".into(), "-p".into(), package, "1".into()])?;
+    let result = String::from_utf8(bytes).unwrap();
+    Ok(result)
+}
+
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -156,7 +178,9 @@ fn main() {
             get_adb_path,
             get_scrcpy_path,
             get_window_position,
-            set_window_position
+            set_window_position,
+            is_running,
+            launch_app
         ])
         .plugin(
             tauri_plugin_log::Builder::default()

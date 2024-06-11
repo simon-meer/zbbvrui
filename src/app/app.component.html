@@ -1,4 +1,51 @@
-<div class="container">
-    <app-device name="VR1" id="38071FDJH003AM" [port]="5555"/>
-    <app-device name="VR2" id="BLABLA" [port]="5556"/>
-</div>
+<sbb-container class="container" color="milk">
+    @for (item of devices(); track trackByIndex; let i = $index) {
+        <app-device [name]="'VR'+(i+1)" [id]="item" [port]="5555+i" />
+    }
+
+    <sbb-dialog #overlay (didClose)="onDialogClosed($event)">
+        <sbb-dialog-title>Title</sbb-dialog-title>
+        <sbb-dialog-content>
+            <div>
+                <sbb-form-field error-space="none" size="m" width="default">
+                    <label>Einstellungen</label>
+
+                    <input
+                        #input
+                        class=""
+                        placeholder="Package Name"
+                        [value]="packageName()"
+                        (change)="packageName.set(input.value)"
+                    />
+                </sbb-form-field>
+
+                @for (item of devices(); track trackByIndex; let i = $index) {
+                    <sbb-card>
+                        <sbb-form-field error-space="none" size="m" width="default">
+                            <label>Serial-ID</label>
+
+                            <input
+                                #input
+                                class=""
+                                placeholder="Serial-id..."
+                                [value]="item"
+                                (change)="setDeviceSerial(i, input.value)"
+                            />
+                        </sbb-form-field>
+                    </sbb-card>
+                }
+            </div>
+        </sbb-dialog-content>
+        <sbb-dialog-actions
+                align-group="stretch"
+                orientation="vertical"
+                horizontal-from="medium"
+        >
+            <sbb-secondary-button sbb-dialog-close="">Cancel</sbb-secondary-button>
+            <sbb-button sbb-dialog-close="save">Confirm</sbb-button>
+        </sbb-dialog-actions>
+    </sbb-dialog>
+
+    <sbb-divider/>
+    <sbb-button (click)="openOverlay(overlay, $event)" size="m">Einstellungen</sbb-button>
+</sbb-container>

@@ -4,7 +4,7 @@ import {
     CUSTOM_ELEMENTS_SCHEMA,
     effect,
     ElementRef,
-    input,
+    input, OnDestroy,
     OnInit,
     signal,
     ViewChild
@@ -44,7 +44,7 @@ enum State {
     templateUrl: './device.component.html',
     styleUrl: './device.component.css'
 })
-export class DeviceComponent implements OnInit {
+export class DeviceComponent implements OnInit, OnDestroy {
     public name = input.required<string>();
     public id = input.required<string>();
     public port = input.required<number>();
@@ -98,6 +98,7 @@ export class DeviceComponent implements OnInit {
             distinctUntilChanged((lhs, rhs) => JSON.stringify(lhs) === JSON.stringify(rhs))
         ).subscribe(device => this.onDeviceChanged(device[0], device[1]));
 
+        // Connect when state allows for it
         effect(() => {
             const state = this.state();
 
@@ -121,6 +122,7 @@ export class DeviceComponent implements OnInit {
             allowSignalWrites: true
         });
 
+        // Start mirroring when toggle changes or we are connected
         effect(() => {
             console.log("OK", this.mirroringActivated(), this.state());
             if (this.mirroringActivated() && this.state() == State.Ready) {
@@ -134,9 +136,9 @@ export class DeviceComponent implements OnInit {
             allowSignalWrites: true
         });
 
+        // Keep settings in sync
         effect(() => {
             if (this._syncingSettings) return;
-            console.log('update settings');
 
             const settings = this._settingsService.getSettings(this.id());
 
@@ -149,6 +151,34 @@ export class DeviceComponent implements OnInit {
 
             this._settingsService.setSettings(settings);
         });
+
+
+        effect((onCleanup) => {
+            if(this.state() !== State.Ready || !this.enforceAppActivated()) {
+                return;
+            }
+
+            const check = async () => {
+                if(!await this._deviceService.isRunning(this.ip()!, this._settingsService.getPackageName())) {
+                    console.log('launching app');
+                    await this._deviceService.launch(this.ip()!, this._settingsService.getPackageName());
+                }
+            }
+
+            check();
+
+            const timer = setInterval(async () => {
+                await check();
+            }, 1000);
+
+            onCleanup(() => {
+                clearTimeout(timer);
+            });
+        });
+    }
+
+    ngOnDestroy(): void {
+        this.scrcpyProcess()?.kill();
     }
 
     ngOnInit(): void {

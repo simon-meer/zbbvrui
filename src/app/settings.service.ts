@@ -9,6 +9,21 @@ export class SettingsService {
     constructor() {
     }
 
+    getPackageName(): string {
+        return localStorage.getItem('package') ?? 'ch.sbb.xr.zbbvr';
+    }
+
+    setPackageName(activity: string) {
+        localStorage.setItem('package', activity);
+    }
+
+    getDeviceSerials(): string[] {
+        return JSON.parse(localStorage.getItem('devices') ?? '[]');
+    }
+
+    setDeviceSerials(devices: string[]) {
+        localStorage.setItem('devices', JSON.stringify(devices));
+    }
 
     getSettings(id: string) {
         const jsonString = localStorage.getItem(`device.${id}`);
@@ -28,6 +43,6 @@ export class SettingsService {
     }
 
     setSettings(settings: DeviceSettings) {
-        localStorage.setItem(settings.id, JSON.stringify(settings));
+        localStorage.setItem(`device.${settings.id}`, JSON.stringify(settings));
     }
 }

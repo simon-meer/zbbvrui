@@ -60,7 +60,7 @@ export class ScrcpyService {
     }
 
     spawnScrcpy(id: string, position?: Position): Observable<CommandEvent> {
-        const args = ['-s', id];
+        const args = ['-s', id, '--crop', '2064:2208:0:0', '--max-size', '1080'];
 
         if (position) {
             args.push('--window-x', position.x + '');

@@ -1,0 +1,29 @@
+<div>
+    <sbb-form-field error-space="none" size="m" width="default">
+        <label>Package-Name</label>
+
+        <input
+            #input
+            class=""
+            placeholder="Package Name"
+            [value]="packageName()"
+            (change)="packageName.set(input.value)"
+        />
+    </sbb-form-field>
+
+    @for (item of devices(); track trackByIndex; let i = $index) {
+        <sbb-card>
+            <sbb-form-field error-space="none" size="m" width="default">
+                <label>Serial-ID</label>
+
+                <input
+                    #input
+                    class=""
+                    placeholder="Serial-id..."
+                    [value]="item"
+                    (change)="setDeviceSerial(i, input.value)"
+                />
+            </sbb-form-field>
+        </sbb-card>
+    }
+</div>

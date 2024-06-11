@@ -40,4 +40,18 @@ export class DeviceService {
           id
       });
   }
+
+  async isRunning(id: string, packageName: string) {
+      return invoke<boolean>('is_running', {
+          id,
+          'package': packageName
+      })
+  }
+
+  async launch(id: string, packageName: string) {
+      return invoke<boolean>('launch_app', {
+          id,
+          'package': packageName
+      })
+  }
 }

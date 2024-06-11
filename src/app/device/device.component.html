@@ -65,14 +65,19 @@
                         (change)="mirroringActivated.set(mirrorCheck.checked)"
                         size="s"
                         value="Value"
-                        name="name"
+                        name="keepMirroring"
                         label-position="after"
                 >
                     <sbb-icon slot="icon" name="eye-small"></sbb-icon>
                     Spiegelung
                 </sbb-toggle-check>
 
-                <sbb-toggle-check value="Value" name="name" label-position="after">
+                <sbb-toggle-check #appCheck
+                                  [checked]="enforceAppActivated()"
+                                  (change)="enforceAppActivated.set(appCheck.checked)"
+                                  value="Value"
+                                  name="keepAppRunning"
+                                  label-position="after">
                     App laufen lassen
                 </sbb-toggle-check>
             </div>
