@@ -20,7 +20,19 @@ import '@sbb-esta/lyne-elements/notification.js';
 import '@sbb-esta/lyne-elements/status.js';
 
 import {DeviceService} from "../device.service";
-import {defer, distinctUntilChanged, filter, finalize, from, map, retry, Subscription, tap} from "rxjs";
+import {
+    defer,
+    distinctUntilChanged,
+    filter,
+    finalize, firstValueFrom,
+    from,
+    interval,
+    map,
+    retry,
+    Subscription, switchMap,
+    tap,
+    timer
+} from "rxjs";
 import {Device, DeviceState} from "../../domain/device.model";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {SbbStepperElement} from "@sbb-esta/lyne-elements/stepper.js";
@@ -61,6 +73,24 @@ export class DeviceComponent implements OnInit, OnDestroy {
     public enforceAppActivated = signal(false);
     public scrcpyProcess = signal<undefined | Child>(undefined);
     public lastPosition = signal<Position | undefined>(undefined);
+    public batteryLevel = signal<number | undefined>(undefined);
+    public batteryLevelIcon = computed(() => {
+        const batteryLevel = this.batteryLevel();
+        if(batteryLevel === undefined) {
+            return '';
+        }
+        if (batteryLevel > 75) {
+            return 'battery-level-full-small';
+        }
+        if (batteryLevel > 50) {
+            return 'battery-level-medium-small';
+        }
+        if (batteryLevel > 15) {
+            return 'battery-level-low-small';
+        }
+
+        return 'battery-level-empty-small';
+    });
 
     protected connectionError = signal<string | undefined>(undefined);
     public isBusy = false;
@@ -127,7 +157,6 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
         // Start mirroring when toggle changes or we are connected
         effect(() => {
-            console.log("OK", this.mirroringActivated(), this.state());
             if (this.mirroringActivated() && this.state() == State.Ready) {
                 this.startMirror();
             } else if (this.isMirroring()) {
@@ -156,27 +185,53 @@ export class DeviceComponent implements OnInit, OnDestroy {
         });
 
 
+        // Keep app running
         effect((onCleanup) => {
             if (this.state() !== State.Ready || !this.enforceAppActivated()) {
                 return;
             }
 
+            // Ticks since last success
+            let handle: number | undefined = undefined;
+            let retryCount = 0;
             const check = async () => {
-                if (!await this._deviceService.isRunning(this.ip()!, this._settingsService.getPackageName())) {
-                    console.log('launching app');
-                    await this._deviceService.launch(this.ip()!, this._settingsService.getPackageName());
+                try {
+                    if (await this._deviceService.isScreenOn(this.ip()!) === true &&
+                        !await this._deviceService.isRunning(this.ip()!, this._settingsService.getPackageName())) {
+                        console.log('launch')
+                        
+                        await this._deviceService.launch(this.ip()!, this._settingsService.getPackageName());
+                        retryCount++;
+                    } else {
+                        retryCount = 0;
+                    }
+                } finally {
+                    handle = setTimeout(check.bind(this), 1000 * Math.pow(2, retryCount));
                 }
             }
 
-            check();
-
-            const timer = setInterval(async () => {
-                await check();
-            }, 1000);
+            handle = setTimeout(check.bind(this), 1000);
 
             onCleanup(() => {
-                clearTimeout(timer);
+                clearTimeout(handle);
             });
+        });
+
+        // Update battery
+        effect((onCleanup) => {
+            if(this.state() !== State.Ready) {
+                return;
+            }
+
+            const subscription = timer(0, 30_000).pipe(
+                switchMap(_ => from(this._deviceService.getBatteryLevel(this.ip()!)))
+            ).subscribe(batteryLevel => {
+                this.batteryLevel.set(batteryLevel);
+            });
+
+            onCleanup(subscription.unsubscribe);
+        }, {
+            allowSignalWrites: true
         });
     }
 

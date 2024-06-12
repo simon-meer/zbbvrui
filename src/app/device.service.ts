@@ -48,10 +48,25 @@ export class DeviceService {
       })
   }
 
+
+    async isScreenOn(id: string) {
+        return invoke<boolean>('is_screen_on', {
+            id
+        }).catch(e => undefined);
+    }
+
   async launch(id: string, packageName: string) {
       return invoke<boolean>('launch_app', {
           id,
           'package': packageName
       })
+  }
+
+  async getBatteryLevel(id: string) {
+      return invoke<number>('get_battery_level', {
+          id
+      }).catch(e => {
+          return undefined;
+      });
   }
 }

@@ -98,7 +98,7 @@ async fn set_window_position(
 
 #[tauri::command]
 async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<String, ZBBError> {
-    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
 
     let serial = Some(id.clone());
 
@@ -164,7 +164,7 @@ async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<
 /// Gets the IP address of a Android device
 #[tauri::command]
 fn get_ip(id: String) -> Result<String, ZBBError> {
-    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
     let serial = Some(id);
 
     let ip_route = adb.shell_command(&serial, vec!["ip".to_string(), "route".to_string()])?;
@@ -221,22 +221,44 @@ async fn open_stream(id: String, app_handle: AppHandle) -> Result<(), ZBBError> 
 #[tauri::command]
 async fn is_running(id: String, package: String) -> Result<bool, ZBBError> {
     let serial = Some(id);
-    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
 
     let result = adb.shell_command(&serial, vec!["pidof".into(), package])?;
 
     Ok(!result.is_empty())
 }
 
+
+#[tauri::command]
+async fn is_screen_on(id: String) -> Result<bool, ZBBError> {
+    let serial = Some(id);
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
+
+    let result = adb.shell_command(&serial, vec!["dumpsys deviceidle | grep mScreenOn".into()])?;
+    let result_string = String::from_utf8(result).map_err(|err|ZBBError::Other(err.to_string()))?;
+
+    Ok(result_string.split_once('=').map(|it| it.1.trim() == "true").unwrap_or(false))
+}
+
+
+
 #[tauri::command]
 async fn launch_app(id: String, package: String) -> Result<String, ZBBError> {
     let serial = Some(id);
-    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
+
+    // Disable proximity sensor to get the device out of sleep
+    // If we don't do this, the device sometimes gets into a weird state
+    let _ = adb.shell_command(&serial, vec!["am broadcast -a com.oculus.vrpowermanager.prox_close".to_string()]);
 
     let bytes = adb.shell_command(
         &serial,
         vec!["monkey".into(), "-p".into(), package, "1".into()],
     )?;
+
+    // Enable proximity sensor again
+    let _ = adb.shell_command(&serial, vec!["am broadcast -a com.oculus.vrpowermanager.automation_disable".to_string()]);
+
     let result = String::from_utf8(bytes).unwrap();
     Ok(result)
 }
@@ -244,12 +266,29 @@ async fn launch_app(id: String, package: String) -> Result<String, ZBBError> {
 #[tauri::command]
 async fn shutdown_device(id: String) -> Result<(), ZBBError> {
     let serial = Some(id);
-    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
 
     adb.shell_command(&serial, vec!["reboot".into(), "-p".into()])?;
 
     Ok(())
 }
+
+#[tauri::command]
+async fn get_battery_level(id: String) -> Result<i32, ZBBError> {
+    let serial = Some(id);
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
+
+    let level_bytes = adb.shell_command(&serial, vec!["dumpsys battery | grep level".into()])?;
+    let level_string = String::from_utf8(level_bytes).map_err(|it| ZBBError::Other("Konnte Batteriestand nicht holen.".into()))?;
+
+    let level = level_string.split(':').into_iter().nth(1).and_then(|number| number.trim().parse::<i32>().ok());
+
+    match level {
+        Some(battery) => Ok(battery),
+        None => Err(ZBBError::Other("Unbekannter Batteriestand".into()))
+    }
+}
+
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -266,7 +305,9 @@ fn main() {
             set_window_position,
             is_running,
             launch_app,
-            shutdown_device
+            shutdown_device,
+            get_battery_level,
+            is_screen_on
         ])
         .plugin(
             tauri_plugin_log::Builder::default()

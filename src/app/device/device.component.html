@@ -91,6 +91,10 @@
                     Bildschirm anzeigen
                 </sbb-toggle-check>
 
+                <sbb-status *ngIf="batteryLevel() !== undefined" [iconName]="batteryLevelIcon()">
+                    {{ batteryLevel() }}%
+                </sbb-status>
+
                 <sbb-toggle-check
                     #appCheck
                     [checked]="enforceAppActivated()"

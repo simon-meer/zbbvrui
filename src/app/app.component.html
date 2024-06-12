@@ -11,11 +11,11 @@
                     <label>Package Name</label>
 
                     <input
-                        #input
+                        #packageInput
                         class=""
                         placeholder="Package Name"
                         [value]="packageName()"
-                        (change)="packageName.set(input.value)"
+                        (change)="packageName.set(packageInput.value)"
                     />
                 </sbb-form-field>
             </div>
