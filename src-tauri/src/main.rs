@@ -168,6 +168,16 @@ async fn launch_app(id: String, package: String) -> Result<String, ZBBError> {
     Ok(result)
 }
 
+#[tauri::command]
+async fn shutdown_device(id: String) -> Result<(), ZBBError> {
+    let serial = Some(id);
+    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+
+    adb.shell_command(&serial, vec!["reboot".into(), "-p".into()])?;
+
+    Ok(())
+}
+
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 fn main() {
@@ -182,7 +192,8 @@ fn main() {
             get_window_position,
             set_window_position,
             is_running,
-            launch_app
+            launch_app,
+            shutdown_device
         ])
         .plugin(
             tauri_plugin_log::Builder::default()
@@ -195,7 +206,7 @@ fn main() {
                 .resolve_resource("scrcpy/adb.exe")
                 .ok_or(ZBBError::ADB("ADB nicht gefunden".to_string())).expect("ADB not found");
 
-            Command::new(adb_exe).creation_flags(
+            Command::new(adb_exe).args(vec!["devices".to_string()]).creation_flags(
                 CREATE_NO_WINDOW
             ).output().expect("Unable to start ADB");
 
