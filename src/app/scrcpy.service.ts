@@ -14,6 +14,7 @@ import {
     timer
 } from "rxjs";
 import {Position} from "../domain/position.model";
+import {SettingsService} from "./settings.service";
 
 type CommandEvent = StreamEvent | ProcessEvent | WindowEvent;
 
@@ -40,7 +41,7 @@ interface WindowEvent {
 })
 export class ScrcpyService {
 
-    constructor() {
+    constructor(private settingsService: SettingsService) {
 
     }
 
@@ -60,7 +61,7 @@ export class ScrcpyService {
     }
 
     spawnScrcpy(id: string, position?: Position): Observable<CommandEvent> {
-        const args = ['-s', id, '--crop', '2064:2208:0:0', '--max-size', '1080'];
+        const args = ['-s', id, ...this.settingsService.getScrcpyArguments().split(/\s+/g)];
 
         if (position) {
             args.push('--window-x', position.x + '');

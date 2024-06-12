@@ -5,12 +5,12 @@ import {RouterOutlet} from '@angular/router';
 import '@sbb-esta/lyne-elements/button.js';
 import "@sbb-esta/lyne-elements/dialog.js";
 import "@sbb-esta/lyne-elements/overlay.js";
+import "@sbb-esta/lyne-elements/title.js";
 
 import {DeviceComponent} from "./device/device.component";
 import {SettingsComponent} from "./settings/settings.component";
 import {SettingsService} from "./settings.service";
 import {SbbDialogElement} from "@sbb-esta/lyne-elements/dialog.js";
-import {SbbOverlayCloseEventDetails} from "@sbb-esta/lyne-elements/core/interfaces.js";
 
 @Component({
     selector: 'app-root',
@@ -22,6 +22,7 @@ import {SbbOverlayCloseEventDetails} from "@sbb-esta/lyne-elements/core/interfac
 })
 export class AppComponent {
     packageName = signal(this._settingsService.getPackageName());
+    scrcpyArguments = signal(this._settingsService.getScrcpyArguments());
     devices = signal<string[]>([]);
 
     constructor(private _settingsService: SettingsService) {
@@ -57,5 +58,6 @@ export class AppComponent {
         console.log(e);
         this._settingsService.setPackageName(this.packageName());
         this._settingsService.setDeviceSerials(this.devices());
+        this._settingsService.setScrcpyArguments(this.scrcpyArguments());
     }
 }

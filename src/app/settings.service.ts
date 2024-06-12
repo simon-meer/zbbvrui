@@ -45,4 +45,12 @@ export class SettingsService {
     setSettings(settings: DeviceSettings) {
         localStorage.setItem(`device.${settings.id}`, JSON.stringify(settings));
     }
+
+    getScrcpyArguments(): string {
+        return localStorage.getItem('scrcpyArgs') ??  '--crop 2064:2208:0:0 --max-size 1080';
+    }
+
+    setScrcpyArguments(args: string) {
+        localStorage.setItem('scrcpyArgs', args);
+    }
 }

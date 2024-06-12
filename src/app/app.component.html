@@ -4,11 +4,12 @@
     }
 
     <sbb-dialog #overlay (didClose)="onDialogClosed($event)">
-        <sbb-dialog-title>Title</sbb-dialog-title>
+        <sbb-dialog-title>Einstellungen</sbb-dialog-title>
         <sbb-dialog-content>
+            <sbb-title level="4">Grundsätzlich</sbb-title>
             <div>
                 <sbb-form-field error-space="none" size="m" width="default">
-                    <label>Einstellungen</label>
+                    <label>Package Name</label>
 
                     <input
                         #input
@@ -18,7 +19,20 @@
                         (change)="packageName.set(input.value)"
                     />
                 </sbb-form-field>
+                <sbb-form-field error-space="none" size="m" width="default">
+                    <label>Scrcpy Argumente</label>
 
+                    <input
+                        #input
+                        class=""
+                        placeholder=""
+                        [value]="scrcpyArguments()"
+                        (change)="scrcpyArguments.set(input.value)"
+                    />
+                </sbb-form-field>
+            </div>
+            <sbb-title level="4">Geräte</sbb-title>
+            <div>
                 @for (item of devices(); track trackByIndex; let i = $index) {
                     <sbb-card>
                         <sbb-form-field error-space="none" size="m" width="default">
@@ -41,8 +55,8 @@
                 orientation="vertical"
                 horizontal-from="medium"
         >
-            <sbb-secondary-button sbb-dialog-close="">Cancel</sbb-secondary-button>
-            <sbb-button sbb-dialog-close="save">Confirm</sbb-button>
+            <!--  <sbb-secondary-button sbb-dialog-close="">Cancel</sbb-secondary-button> -->
+            <sbb-button sbb-dialog-close="save">Speichern</sbb-button>
         </sbb-dialog-actions>
     </sbb-dialog>
 
