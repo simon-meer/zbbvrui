@@ -67,9 +67,12 @@ impl From<Device> for LocalDevice {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(tag = "type", content = "message")]
 pub enum ZBBError {
     ADB(String),
     IO(String),
+    NotInANetwork,
+    NotInSameNetwork,
     Other(String)
 }
 

@@ -1,16 +1,19 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
+use std::ops::Index;
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
 use log::{error, info, log, warn};
+use network_interface::{Netmask, NetworkInterface};
+use network_interface::NetworkInterfaceConfig;
 use serde::Serialize;
-use tauri::{AppHandle, Position};
 use tauri::api::Error::Utf8;
+use tauri::{AppHandle, Position};
 use tauri_plugin_log::LogTarget;
 
 use adb_client::{AdbTcpConnection, RustADBError};
@@ -65,9 +68,9 @@ async fn get_devices(app_handle: AppHandle) -> Result<Vec<LocalDevice>, ZBBError
             // Launch ADB
             launch_adb(app_handle);
 
-            return AdbTcpConnection::new(LOOPBACK, ADB_PORT)
+            return AdbTcpConnection::new(LOOPBACK, ADB_PORT);
         }
-        
+
         Err(error)
     })?;
 
@@ -146,6 +149,9 @@ async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<
         .parse()
         .map_err(|err| ZBBError::Other(format!("{:?}", err)))?;
 
+    // Check if we're in the same network
+    test_network(ip_address)?;
+
     if let Err(result) = adb.connect(ip_address, port) {
         if !result.to_string().contains(" already connected ") {
             return Err(result.into());
@@ -155,6 +161,7 @@ async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<
     Ok(ip_address.to_string())
 }
 
+/// Gets the IP address of a Android device
 #[tauri::command]
 fn get_ip(id: String) -> Result<String, ZBBError> {
     let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
@@ -168,12 +175,42 @@ fn get_ip(id: String) -> Result<String, ZBBError> {
         .filter(|line| line.len() >= 9)
         .nth(0)
         .map(|line| line[8])
-        .ok_or(ZBBError::Other(
-            "Konnte die IP Addresse nicht finden.".to_string(),
-        ))?
+        .ok_or(ZBBError::NotInANetwork)?
         .to_string();
 
     Ok(ip_address)
+}
+
+/// Tests if [other] is in the same network as the host machine.
+///
+/// For simplicity's sake, we assume a netmask
+fn test_network(other: Ipv4Addr) -> Result<(), ZBBError> {
+    let network_interfaces =
+        NetworkInterface::show().map_err(|it| ZBBError::Other(it.to_string()))?;
+
+    let mut addresses = network_interfaces
+        .into_iter()
+        .flat_map(|interface| interface.addr);
+
+    if !addresses.any(|addr| {
+        if let IpAddr::V4(ip) = addr.ip() {
+            if let Some(IpAddr::V4(netmask)) = addr.netmask() {
+                return is_match(ip, other, netmask)
+            }
+        }
+
+        false
+    }) {
+        return Err(ZBBError::NotInSameNetwork);
+    }
+
+    Ok(())
+}
+
+fn is_match(lhs: Ipv4Addr, rhs: Ipv4Addr, netmask: Ipv4Addr) -> bool {
+    netmask.octets().into_iter().enumerate().all(|(pos, mask)| {
+        lhs.octets()[pos] & mask == rhs.octets()[pos] & mask
+    })
 }
 
 #[tauri::command]
@@ -242,4 +279,24 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ip_check() {
+        let ip1 = Ipv4Addr::new(192, 168, 1, 5);
+        let ip2 = Ipv4Addr::new(192, 168, 1, 155);
+        let ip3 = Ipv4Addr::new(192, 168, 2, 155);
+        let netmask = Ipv4Addr::new(255,255,255,0);
+        let netmask2 = Ipv4Addr::new(255,255,0,0);
+
+        assert_eq!(true, is_match(ip1, ip2, netmask));
+        assert_eq!(false, is_match(ip1, ip3, netmask));
+        assert_eq!(true, is_match(ip1, ip3, netmask2));
+    }
 }

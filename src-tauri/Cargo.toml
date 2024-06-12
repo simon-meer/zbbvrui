@@ -19,6 +19,7 @@ adb_client = { path = "../adb_client" }
 log = "0.4.21"
 async-std = "1.12.0"
 window_manager = { path = "../window_manager"}
+network-interface = "2.0.0"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

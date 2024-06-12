@@ -34,6 +34,18 @@
 
         <sbb-step-label>Wireless-Verbindung</sbb-step-label>
         <sbb-step>
+            <sbb-notification
+                    *ngIf="connectionError()"
+                    style="--sbb-notification-margin: 0 0 var(--sbb-spacing-fixed-4x) 0;"
+                    title-content="Fehler bei der Verbindung"
+                    type="error"
+                    size="m"
+                    animation="close"
+                    readonly
+            >
+                {{ connectionError() }}
+            </sbb-notification>
+
             <div
                     tabindex="0"
                     class="sbb-focus-outline"

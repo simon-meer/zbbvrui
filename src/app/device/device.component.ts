@@ -17,7 +17,19 @@ import '@sbb-esta/lyne-elements/loading-indicator.js';
 import '@sbb-esta/lyne-elements/toggle-check.js';
 import '@sbb-esta/lyne-elements/notification.js';
 import {DeviceService} from "../device.service";
-import {distinctUntilChanged, filter, finalize, lastValueFrom, map, takeLast, tap} from "rxjs";
+import {
+    defer,
+    distinctUntilChanged,
+    filter,
+    finalize, from,
+    lastValueFrom,
+    map, onErrorResumeNext, retry,
+    Subscription,
+    switchMap,
+    takeLast,
+    tap,
+    timer
+} from "rxjs";
 import {Device, DeviceState} from "../../domain/device.model";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {SbbStepperElement} from "@sbb-esta/lyne-elements/stepper.js";
@@ -26,6 +38,7 @@ import {ScrcpyService} from "../scrcpy.service";
 import {Child} from "@tauri-apps/api/shell";
 import {SettingsService} from "../settings.service";
 import {Position} from "../../domain/position.model";
+import {ZBBError} from "../../domain/zbberror.model";
 
 enum State {
     WaitingForDevice,
@@ -52,11 +65,13 @@ export class DeviceComponent implements OnInit, OnDestroy {
     public localDevice = signal<Device | undefined>(undefined);
     public remoteDevice = signal<Device | undefined>(undefined);
     public isMirroring = signal(false);
-    public isBusy = signal(false);
     public mirroringActivated = signal(false);
     public enforceAppActivated = signal(false);
     public scrcpyProcess = signal<undefined | Child>(undefined);
     public lastPosition = signal<Position | undefined>(undefined);
+
+    protected connectionError = signal<string | undefined>(undefined);
+    public isBusy = false;
 
     private _syncingSettings = true;
 
@@ -93,13 +108,13 @@ export class DeviceComponent implements OnInit, OnDestroy {
     ) {
         this._deviceService.observeDevices().pipe(
             takeUntilDestroyed(),
-            filter(_ => !this.isBusy()),
+            filter(_ => !this.isBusy),
             map(devices => this.extractDevices(devices)),
             distinctUntilChanged((lhs, rhs) => JSON.stringify(lhs) === JSON.stringify(rhs))
         ).subscribe(device => this.onDeviceChanged(device[0], device[1]));
 
         // Connect when state allows for it
-        effect(() => {
+        effect((onCleanup) => {
             const state = this.state();
 
             this._stepper.nativeElement.selectedIndex = state === State.WaitingForDevice || state === State.Authorizing
@@ -109,17 +124,12 @@ export class DeviceComponent implements OnInit, OnDestroy {
                     : 2;
 
             if (state === State.WaitingForRemoteConnection) {
-                this.isBusy.set(true);
-                try {
-                    this._deviceService.connect(this.id()!, this.port()).then(ip => {
-                        this.ip.set(ip);
-                    });
-                } finally {
-                    this.isBusy.set(false);
-                }
+                const subscription = this.startConnecting(this.id(), this.port());
+                onCleanup(() => {
+                    subscription.unsubscribe();
+                });
             }
-        }, {
-            allowSignalWrites: true
+
         });
 
         // Start mirroring when toggle changes or we are connected
@@ -154,12 +164,12 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
 
         effect((onCleanup) => {
-            if(this.state() !== State.Ready || !this.enforceAppActivated()) {
+            if (this.state() !== State.Ready || !this.enforceAppActivated()) {
                 return;
             }
 
             const check = async () => {
-                if(!await this._deviceService.isRunning(this.ip()!, this._settingsService.getPackageName())) {
+                if (!await this._deviceService.isRunning(this.ip()!, this._settingsService.getPackageName())) {
                     console.log('launching app');
                     await this._deviceService.launch(this.ip()!, this._settingsService.getPackageName());
                 }
@@ -183,6 +193,32 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
     ngOnInit(): void {
         this.applySettings();
+    }
+
+    private startConnecting(id: string, port: number): Subscription {
+        // Try connecting until the subscription has been canceled or the connection has been established
+        return defer(() => {
+            console.log('start connecting', this.isBusy);
+
+            this.isBusy = true;
+            return from(this._deviceService.connect(id, port));
+        }).pipe(
+            tap({
+                next: () => this.isBusy = false,
+                error: (e) => {
+                    this.isBusy = false;
+                    this.handleError(e);
+                }
+            }),
+            retry({
+                delay: 1000
+            })
+        ).subscribe((ip) => {
+            console.log('connection established');
+
+            this.ip.set(ip);
+            this.connectionError.set(undefined);
+        });
     }
 
     private applySettings() {
@@ -245,6 +281,25 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
             }
         });
+    }
+
+    private handleError(e: ZBBError) {
+        console.error(e);
+
+        switch (e.type) {
+            case "NotInANetwork":
+                this.connectionError.set('Die Brille scheint nicht mit dem Netzwerk verbunden zu sein. Bitte überprüfe die WLAN-Einstellungen der Brille.');
+                break;
+            case "NotInSameNetwork":
+                this.connectionError.set('Die Brille scheint nicht im gleichen Netzwerk wie der PC zu sein. Stelle sicher, dass der PC mit dem Router verbunden ist.');
+                break;
+            case "ADB":
+                break;
+            case "IO":
+                break;
+            case "Other":
+                break;
+        }
     }
 
     protected readonly State = State;
