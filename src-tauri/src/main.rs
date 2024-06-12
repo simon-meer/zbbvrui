@@ -7,20 +7,37 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
+use log::{error, info, log, warn};
 use serde::Serialize;
 use tauri::{AppHandle, Position};
-
-use crate::scrcpy::ScrCpy;
-use adb_client::AdbTcpConnection;
-use log::{info, log};
 use tauri::api::Error::Utf8;
 use tauri_plugin_log::LogTarget;
+
+use adb_client::{AdbTcpConnection, RustADBError};
 use window_manager::WindowError;
 
+use crate::scrcpy::ScrCpy;
 use crate::structs::{LocalDevice, ZBBError};
 
 mod scrcpy;
 mod structs;
+
+const LOOPBACK: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
+const ADB_PORT: u16 = 5037;
+
+fn launch_adb(app_handle: AppHandle) {
+    let adb_exe = app_handle
+        .path_resolver()
+        .resolve_resource("scrcpy/adb.exe")
+        .ok_or(ZBBError::ADB("ADB nicht gefunden".to_string()))
+        .expect("ADB not found");
+
+    Command::new(adb_exe)
+        .args(vec!["devices".to_string()])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .expect("Unable to start ADB");
+}
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -40,8 +57,19 @@ fn get_scrcpy_path(app_handle: AppHandle) -> Result<PathBuf, ZBBError> {
 }
 
 #[tauri::command]
-fn get_devices() -> Result<Vec<LocalDevice>, ZBBError> {
-    let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
+async fn get_devices(app_handle: AppHandle) -> Result<Vec<LocalDevice>, ZBBError> {
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT).or_else(|error| {
+        if let RustADBError::IOError(io_error) = error {
+            warn!("Unable to connect to adb: {:?}", io_error);
+
+            // Launch ADB
+            launch_adb(app_handle);
+
+            return AdbTcpConnection::new(LOOPBACK, ADB_PORT)
+        }
+        
+        Err(error)
+    })?;
 
     let result = adb
         .devices()?
@@ -58,7 +86,10 @@ async fn get_window_position(pid: u32) -> Result<window_manager::Position, Windo
 }
 
 #[tauri::command]
-async fn set_window_position(pid: u32, position: window_manager::Position) -> Result<(), WindowError> {
+async fn set_window_position(
+    pid: u32,
+    position: window_manager::Position,
+) -> Result<(), WindowError> {
     window_manager::set_window_position(pid, position)
 }
 
@@ -70,10 +101,7 @@ async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<
 
     let result = adb.shell_command(
         &serial,
-        vec![
-            "getprop".to_string(),
-            "service.adb.tcp.port".to_string(),
-        ],
+        vec!["getprop".to_string(), "service.adb.tcp.port".to_string()],
     )?;
 
     let configured_port = String::from_utf8(result).unwrap();
@@ -81,7 +109,7 @@ async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<
     info!("Configured port: {}", &configured_port);
     if configured_port.trim() != port.to_string() {
         // Switch to TCP
-        let adb_exe = app_handle
+        let adb_exe = &app_handle
             .path_resolver()
             .resolve_resource("scrcpy/adb.exe")
             .ok_or(ZBBError::ADB("ADB nicht gefunden".to_string()))?;
@@ -93,6 +121,7 @@ async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<
                 "tcpip".to_string(),
                 port.to_string(),
             ])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()?;
 
         info!(
@@ -103,7 +132,11 @@ async fn connect_device(id: String, port: u16, app_handle: AppHandle) -> Result<
         for _ in 0..5 {
             async_std::task::sleep(Duration::from_millis(1000)).await;
 
-            if get_devices()?.iter().any(|it| &it.identifier == &id) {
+            if get_devices(app_handle.clone())
+                .await?
+                .iter()
+                .any(|it| &it.identifier == &id)
+            {
                 break;
             }
         }
@@ -149,7 +182,7 @@ async fn open_stream(id: String, app_handle: AppHandle) -> Result<(), ZBBError> 
 }
 
 #[tauri::command]
-async fn is_running(id: String, package: String) -> Result<(bool), ZBBError> {
+async fn is_running(id: String, package: String) -> Result<bool, ZBBError> {
     let serial = Some(id);
     let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
 
@@ -163,7 +196,10 @@ async fn launch_app(id: String, package: String) -> Result<String, ZBBError> {
     let serial = Some(id);
     let mut adb = AdbTcpConnection::new(Ipv4Addr::from([127, 0, 0, 1]), 5037)?;
 
-    let bytes = adb.shell_command(&serial, vec!["monkey".into(), "-p".into(), package, "1".into()])?;
+    let bytes = adb.shell_command(
+        &serial,
+        vec!["monkey".into(), "-p".into(), package, "1".into()],
+    )?;
     let result = String::from_utf8(bytes).unwrap();
     Ok(result)
 }
@@ -201,15 +237,7 @@ fn main() {
                 .build(),
         )
         .setup(|app| {
-            let adb_exe = app
-                .path_resolver()
-                .resolve_resource("scrcpy/adb.exe")
-                .ok_or(ZBBError::ADB("ADB nicht gefunden".to_string())).expect("ADB not found");
-
-            Command::new(adb_exe).args(vec!["devices".to_string()]).creation_flags(
-                CREATE_NO_WINDOW
-            ).output().expect("Unable to start ADB");
-
+            launch_adb(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())
