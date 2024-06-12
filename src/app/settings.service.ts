@@ -47,7 +47,7 @@ export class SettingsService {
     }
 
     getScrcpyArguments(): string {
-        return localStorage.getItem('scrcpyArgs') ??  '--crop 2064:2208:0:0 --max-size 1080';
+        return localStorage.getItem('scrcpyArgs') ??  '--crop=2064:2208:2064:100 --rotation-offset=-22 --scale=195 --position-x-offset=-520 --position-y-offset=-490 --video-bit-rate=16M --max-size 1080';
     }
 
     setScrcpyArguments(args: string) {
