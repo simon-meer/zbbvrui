@@ -64,17 +64,19 @@
 
         <sbb-step-label>Fertig</sbb-step-label>
         <sbb-step>
-            <div
-                    tabindex="0"
-                    class="sbb-focus-outline"
-                    style="margin-block-end: var(--sbb-spacing-fixed-4x)"
-            >
-                @if (localDevice()) {
-                    Das Gerät ist bereit zum Streamen und kann ausgesteckt werden.
-                } @else {
-                    Das Gerät ist bereit zum Streamen.
-                }
-            </div>
+            <sbb-status  title-content="Verbindung hergestellt!" type="success">
+                <div
+                        tabindex="0"
+                        class="sbb-focus-outline"
+                        style="margin-block-end: var(--sbb-spacing-fixed-4x)"
+                >
+                    @if (localDevice()) {
+                        Das Gerät ist bereit zum Streamen und kann ausgesteckt werden.
+                    } @else {
+                        Das Gerät ist bereit zum Streamen.
+                    }
+                </div>
+            </sbb-status>
             <div class="buttons">
                 <sbb-toggle-check
                     #mirrorCheck
@@ -85,16 +87,20 @@
                     name="keepMirroring"
                     label-position="after"
                 >
-                    <sbb-icon slot="icon" name="eye-small"></sbb-icon>
-                    Spiegelung
+                    <sbb-icon slot="icon" name="display-small"></sbb-icon>
+                    Bildschirm anzeigen
                 </sbb-toggle-check>
 
-                <sbb-toggle-check #appCheck
-                                  [checked]="enforceAppActivated()"
-                                  (change)="enforceAppActivated.set(appCheck.checked)"
-                                  value="Value"
-                                  name="keepAppRunning"
-                                  label-position="after">
+                <sbb-toggle-check
+                    #appCheck
+                    [checked]="enforceAppActivated()"
+                    (change)="enforceAppActivated.set(appCheck.checked)"
+                    size="s"
+                    value="Value"
+                    name="keepAppRunning"
+                    label-position="after">
+                    <sbb-icon slot="icon" name="play-small"></sbb-icon>
+
                     App laufen lassen
                 </sbb-toggle-check>
             </div>

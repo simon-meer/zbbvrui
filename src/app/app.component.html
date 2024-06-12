@@ -6,8 +6,7 @@
     <sbb-dialog #overlay (didClose)="onDialogClosed($event)">
         <sbb-dialog-title>Einstellungen</sbb-dialog-title>
         <sbb-dialog-content>
-            <sbb-title level="4">Grundsätzlich</sbb-title>
-            <div>
+            <div style="margin: var(--sbb-spacing-fixed-2x)">
                 <sbb-form-field error-space="none" size="m" width="default">
                     <label>Package Name</label>
 
@@ -19,6 +18,8 @@
                         (change)="packageName.set(input.value)"
                     />
                 </sbb-form-field>
+            </div>
+            <div style="margin: var(--sbb-spacing-fixed-2x)">
                 <sbb-form-field error-space="none" size="m" width="default">
                     <label>Scrcpy Argumente</label>
 
@@ -34,9 +35,9 @@
             <sbb-title level="4">Geräte</sbb-title>
             <div>
                 @for (item of devices(); track trackByIndex; let i = $index) {
-                    <sbb-card>
-                        <sbb-form-field error-space="none" size="m" width="default">
-                            <label>Serial-ID</label>
+                    <div style="margin: var(--sbb-spacing-fixed-2x)">
+                    <sbb-form-field error-space="none" size="m" width="default">
+                            <label>Gerät {{ i + 1 }} (Serial ID)</label>
 
                             <input
                                 #input
@@ -46,7 +47,7 @@
                                 (change)="setDeviceSerial(i, input.value)"
                             />
                         </sbb-form-field>
-                    </sbb-card>
+                    </div>
                 }
             </div>
         </sbb-dialog-content>
@@ -62,4 +63,5 @@
 
     <sbb-divider/>
     <sbb-button (click)="openOverlay(overlay, $event)" size="m">Einstellungen</sbb-button>
+    <sbb-toast id="warning-toast" icon-name="sign-exclamation-point-medium" />
 </sbb-container>

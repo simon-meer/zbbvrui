@@ -4,7 +4,8 @@ import {
     CUSTOM_ELEMENTS_SCHEMA,
     effect,
     ElementRef,
-    input, OnDestroy,
+    input,
+    OnDestroy,
     OnInit,
     signal,
     ViewChild
@@ -16,20 +17,10 @@ import '@sbb-esta/lyne-elements/stepper.js';
 import '@sbb-esta/lyne-elements/loading-indicator.js';
 import '@sbb-esta/lyne-elements/toggle-check.js';
 import '@sbb-esta/lyne-elements/notification.js';
+import '@sbb-esta/lyne-elements/status.js';
+
 import {DeviceService} from "../device.service";
-import {
-    defer,
-    distinctUntilChanged,
-    filter,
-    finalize, from,
-    lastValueFrom,
-    map, onErrorResumeNext, retry,
-    Subscription,
-    switchMap,
-    takeLast,
-    tap,
-    timer
-} from "rxjs";
+import {defer, distinctUntilChanged, filter, finalize, from, map, retry, Subscription, tap} from "rxjs";
 import {Device, DeviceState} from "../../domain/device.model";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {SbbStepperElement} from "@sbb-esta/lyne-elements/stepper.js";
@@ -39,6 +30,7 @@ import {Child} from "@tauri-apps/api/shell";
 import {SettingsService} from "../settings.service";
 import {Position} from "../../domain/position.model";
 import {ZBBError} from "../../domain/zbberror.model";
+import {NotificationService} from "../notification.service";
 
 enum State {
     WaitingForDevice,
@@ -104,7 +96,8 @@ export class DeviceComponent implements OnInit, OnDestroy {
     constructor(
         private _deviceService: DeviceService,
         private _scrcpyService: ScrcpyService,
-        private _settingsService: SettingsService
+        private _settingsService: SettingsService,
+        private _notificationService: NotificationService
     ) {
         this._deviceService.observeDevices().pipe(
             takeUntilDestroyed(),
@@ -288,16 +281,19 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
         switch (e.type) {
             case "NotInANetwork":
-                this.connectionError.set('Die Brille scheint nicht mit dem Netzwerk verbunden zu sein. Bitte überprüfe die WLAN-Einstellungen der Brille.');
+                this.connectionError.set('Die Brille scheint nicht mit dem Netzwerk verbunden zu sein. Bitte überprüfe die WLAN-Einstellungen der Brille und stelle sicher, dass der Router eingesteckt ist.');
                 break;
             case "NotInSameNetwork":
                 this.connectionError.set('Die Brille scheint nicht im gleichen Netzwerk wie der PC zu sein. Stelle sicher, dass der PC mit dem Router verbunden ist.');
                 break;
             case "ADB":
+                this._notificationService.showToast(`Fehler beim Ausführen von ADB: ${e.message}`);
                 break;
             case "IO":
+                this._notificationService.showToast(`Interner Fehler: ${e.message}`);
                 break;
             case "Other":
+                this._notificationService.showToast(`Interner Fehler: ${e.message}`);
                 break;
         }
     }

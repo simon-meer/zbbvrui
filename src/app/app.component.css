@@ -12,3 +12,7 @@ app-device {
 sbb-button {
   margin: 1em 0;
 }
+
+sbb-form-field {
+  width: 100%;
+}

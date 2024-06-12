@@ -6,6 +6,7 @@ import '@sbb-esta/lyne-elements/button.js';
 import "@sbb-esta/lyne-elements/dialog.js";
 import "@sbb-esta/lyne-elements/overlay.js";
 import "@sbb-esta/lyne-elements/title.js";
+import "@sbb-esta/lyne-elements/toast.js";
 
 import {DeviceComponent} from "./device/device.component";
 import {SettingsComponent} from "./settings/settings.component";
