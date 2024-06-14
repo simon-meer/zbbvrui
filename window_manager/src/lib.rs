@@ -16,6 +16,17 @@ pub struct Position {
     pub height: u32,
 }
 
+impl Position {
+    pub(crate) fn default() -> Position {
+        Position {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WindowError {
     NotFound,
@@ -44,7 +55,7 @@ pub fn set_window_position(pid: u32, pos: Position) -> Result<(), WindowError> {
 
 #[cfg(target_os = "macos")]
 pub fn get_window_position(pid: u32) -> Result<Position, WindowError> {
-    macos::get_window_position(pid)
+    macos::get_window_position(pid as i32)
 }
 
 #[cfg(target_os = "macos")]

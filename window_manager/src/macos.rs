@@ -1,12 +1,14 @@
-use core_graphics::display::{CGGetActiveDisplayList, CGDisplayBounds};
-use core_graphics::window::{kCGWindowListOptionOnScreenOnly, kCGNullWindowID, CGWindowListCopyWindowInfo, CGWindowID};
-use std::collections::HashMap;
+use core_foundation::base::TCFType;
+use core_foundation::dictionary::CFDictionary;
+use core_foundation::number::{CFNumber, CFNumberRef};
+use core_foundation::string::{CFString, CFStringRef};
+use core_graphics::display::{CFArrayGetCount, CFArrayGetValueAtIndex, CFDictionaryGetValueIfPresent, CFDictionaryRef, CGRect};
+use core_graphics::window::{CGWindowListCopyWindowInfo, kCGNullWindowID, kCGWindowBounds, kCGWindowListExcludeDesktopElements, kCGWindowOwnerName, kCGWindowOwnerPID};
+
 use crate::{Position, WindowError};
 
-pub fn get_window_position(pid: u32) -> Result<Position, WindowError> {
-    let window_info = find_window_by_pid(pid).ok_or(WindowError::NotFound)?;
-    let position = get_window_rect(&window_info)?;
-    Ok(position)
+pub fn get_window_position(pid: i32) -> Result<Position, WindowError> {
+    find_window_by_pid(pid).map_err(|_| WindowError::NotFound)
 }
 
 pub fn set_window_position(_pid: u32, _pos: Position) -> Result<(), WindowError> {
@@ -14,31 +16,68 @@ pub fn set_window_position(_pid: u32, _pos: Position) -> Result<(), WindowError>
     Err(WindowError::Other("Setting window position is not implemented on macOS".to_string()))
 }
 
-fn find_window_by_pid(pid: u32) -> Option<HashMap<String, core_graphics::base::CFType>> {
-    let window_list_info = unsafe {
-        CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID)
-    };
-    let windows: Vec<HashMap<String, core_graphics::base::CFType>> = core_graphics::window::CGWindowListOption::from_window_list_info(window_list_info);
+pub fn find_window_by_pid(pid: i32) -> Result<Position, String> {
+    use std::ffi::c_void;
 
-    for window in windows {
-        let window_pid: i64 = window.get("kCGWindowOwnerPID")?.as_i64()?;
-        if window_pid == pid as i64 {
-            return Some(window);
+    unsafe {
+        let cf_win_array =
+            CGWindowListCopyWindowInfo(kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+        let count = CFArrayGetCount(cf_win_array);
+
+        if count == 0 {
+            return Err("No game window found".to_string());
+        }
+
+        let mut mrect = Position::default();
+        let mut window_count = 0;
+        let mut title: String = String::new();
+
+        for i in 0..count {
+            let win_info_ref: CFDictionaryRef =
+                CFArrayGetValueAtIndex(cf_win_array, i) as CFDictionaryRef;
+            let mut test_pid_ref: *const c_void = std::ptr::null_mut();
+            assert_ne!(CFDictionaryGetValueIfPresent(
+                win_info_ref,
+                kCGWindowOwnerPID as *const c_void,
+                &mut test_pid_ref,
+            ), 0);
+            let test_pid = CFNumber::wrap_under_get_rule(test_pid_ref as CFNumberRef);
+
+            if pid == test_pid.to_i32().unwrap() {
+                let mut cg_bounds_dict_ref: *const c_void = std::ptr::null_mut();
+                CFDictionaryGetValueIfPresent(
+                    win_info_ref,
+                    kCGWindowBounds as *const c_void,
+                    &mut cg_bounds_dict_ref,
+                );
+                let cg_bounds_dict =
+                    CFDictionary::wrap_under_get_rule(cg_bounds_dict_ref as CFDictionaryRef);
+                let cg_rect = CGRect::from_dict_representation(&cg_bounds_dict).unwrap();
+
+                let mut cg_title_ref: *const c_void = std::ptr::null_mut();
+                CFDictionaryGetValueIfPresent(
+                    win_info_ref,
+                    kCGWindowOwnerName as *const c_void,
+                    &mut cg_title_ref,
+                );
+                let cg_title = CFString::wrap_under_get_rule(cg_title_ref as CFStringRef);
+                title = cg_title.to_string();
+                if cg_rect.size.height > 200. {
+                    mrect = Position {
+                        x: cg_rect.origin.x.round() as i32,
+                        y: cg_rect.origin.y.round() as i32,
+                        width: cg_rect.size.width.round() as u32,
+                        height: cg_rect.size.height.round() as u32,
+                    };
+
+                    window_count += 1
+                }
+            }
+        }
+        if window_count > 0 {
+            Ok(mrect)
+        } else {
+            Err("No genshin window found".to_string())
         }
     }
-    None
-}
-
-fn get_window_rect(window: &HashMap<String, core_graphics::base::CFType>) -> Result<Position, WindowError> {
-    let bounds = window.get("kCGWindowBounds").ok_or(WindowError::Other("No bounds found".to_string()))?.as_dict().ok_or(WindowError::Other("Invalid bounds".to_string()))?;
-    let x = bounds.get("X").ok_or(WindowError::Other("No X found".to_string()))?.as_f64().ok_or(WindowError::Other("Invalid X".to_string()))?;
-    let y = bounds.get("Y").ok_or(WindowError::Other("No Y found".to_string()))?.as_f64().ok_or(WindowError::Other("Invalid Y".to_string()))?;
-    let width = bounds.get("Width").ok_or(WindowError::Other("No Width found".to_string()))?.as_f64().ok_or(WindowError::Other("Invalid Width".to_string()))?;
-    let height = bounds.get("Height").ok_or(WindowError::Other("No Height found".to_string()))?.as_f64().ok_or(WindowError::Other("Invalid Height".to_string()))?;
-    Ok(Position {
-        x: x as i32,
-        y: y as i32,
-        width: width as u32,
-        height: height as u32,
-    })
 }
