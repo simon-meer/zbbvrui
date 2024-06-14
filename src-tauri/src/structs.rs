@@ -66,6 +66,25 @@ impl From<Device> for LocalDevice {
     }
 }
 
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Paths {
+    pub adb: Option<String>,
+    pub scrcpy: Option<String>
+}
+
+impl Paths {
+    
+    pub fn default() -> Self {
+        Self { adb: None, scrcpy: None }
+    }
+    
+    pub fn new(adb: Option<String>, scrcpy: Option<String>) -> Self {
+        Self { adb, scrcpy }
+    }
+}
+
+
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", content = "message")]
 pub enum ZBBError {

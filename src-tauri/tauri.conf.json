@@ -12,14 +12,22 @@
   "tauri": {
     "allowlist": {
       "all": false,
+      "os": {
+        "all": true
+      },
       "shell": {
         "all": false,
         "open": true,
         "execute": true,
         "scope": [
           {
-            "name": "srcpy",
+            "name": "srcpy_embedded",
             "cmd": "$RESOURCE/scrcpy/scrcpy.exe",
+            "args": true
+          },
+          {
+            "name": "scrcpy",
+            "cmd": "scrcpy",
             "args": true
           }
         ]

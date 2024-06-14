@@ -15,6 +15,7 @@ import {
 } from "rxjs";
 import {Position} from "../domain/position.model";
 import {SettingsService} from "./settings.service";
+import {os} from "@tauri-apps/api";
 
 type CommandEvent = StreamEvent | ProcessEvent | WindowEvent;
 
@@ -70,33 +71,40 @@ export class ScrcpyService {
             args.push('--window-height', position.height + '');
         }
 
-        const cmd = new Command("srcpy", args);
         const subject: ReplaySubject<CommandEvent> = new ReplaySubject(5);
         const destroy: ReplaySubject<void> = new ReplaySubject(1);
 
-        cmd.stdout.on('data', line => subject.next({
-            type: 'stream',
-            pipe: 'stdout',
-            content: line
-        }));
+        return from(os.platform()).pipe(
+            map(platform => {
+                const isWindows = platform === 'win32';
+                const cmd = new Command(isWindows ? "srcpy_embedded" : "scrcpy", args);
 
-        cmd.stderr.on('data', line => subject.next({
-            type: 'stream',
-            pipe: 'stderr',
-            content: line
-        }));
+                cmd.stdout.on('data', line => subject.next({
+                    type: 'stream',
+                    pipe: 'stdout',
+                    content: line
+                }));
 
-        cmd.on('close', () => {
-            subject.complete();
-            destroy.next();
-        });
+                cmd.stderr.on('data', line => subject.next({
+                    type: 'stream',
+                    pipe: 'stderr',
+                    content: line
+                }));
 
-        cmd.on('error', () => {
-            subject.complete();
-            destroy.next();
-        });
+                cmd.on('close', (data) => {
+                    console.log(`command finished with code ${data.code} and signal ${data.signal}`)
+                    subject.complete();
+                    destroy.next();
+                });
 
-        return from(cmd.spawn()).pipe(
+                cmd.on('error', (e) => {
+                    subject.error(e);
+                    destroy.next();
+                });
+
+                return cmd;
+            }),
+            switchMap(cmd => from(cmd.spawn())),
             switchMap((child) => {
                 return subject.pipe(
                     mergeWith(

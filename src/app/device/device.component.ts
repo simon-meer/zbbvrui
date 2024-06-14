@@ -21,14 +21,15 @@ import '@sbb-esta/lyne-elements/status.js';
 
 import {DeviceService} from "../device.service";
 import {
-    defer,
+    asyncScheduler, catchError,
+    defer, delay,
     distinctUntilChanged,
     filter,
     finalize, firstValueFrom,
     from,
     interval,
-    map,
-    retry,
+    map, repeat,
+    retry, subscribeOn,
     Subscription, switchMap,
     tap,
     timer
@@ -68,15 +69,13 @@ export class DeviceComponent implements OnInit, OnDestroy {
     public ip = signal<string | undefined>(undefined);
     public localDevice = signal<Device | undefined>(undefined);
     public remoteDevice = signal<Device | undefined>(undefined);
-    public isMirroring = signal(false);
     public mirroringActivated = signal(false);
     public enforceAppActivated = signal(false);
-    public scrcpyProcess = signal<undefined | Child>(undefined);
     public lastPosition = signal<Position | undefined>(undefined);
     public batteryLevel = signal<number | undefined>(undefined);
     public batteryLevelIcon = computed(() => {
         const batteryLevel = this.batteryLevel();
-        if(batteryLevel === undefined) {
+        if (batteryLevel === undefined) {
             return '';
         }
         if (batteryLevel > 75) {
@@ -91,11 +90,12 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
         return 'battery-level-empty-small';
     });
-
     protected connectionError = signal<string | undefined>(undefined);
     public isBusy = false;
 
     private _syncingSettings = true;
+    private _scrcpyProcess?: Child;
+
 
     public state = computed(() => {
         const remote = this.remoteDevice();
@@ -148,19 +148,18 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
             if (state === State.WaitingForRemoteConnection) {
                 const subscription = this.startConnecting(this.id(), this.port());
-                onCleanup(() => {
-                    subscription.unsubscribe();
-                });
+                onCleanup(() => subscription.unsubscribe());
             }
 
         });
 
         // Start mirroring when toggle changes or we are connected
-        effect(() => {
+        effect((onCleanup) => {
             if (this.mirroringActivated() && this.state() == State.Ready) {
-                this.startMirror();
-            } else if (this.isMirroring()) {
-                this.scrcpyProcess()?.kill().catch(e => {
+                const subscription = this.startMirroring();
+                onCleanup(() => subscription.unsubscribe());
+            } else {
+                this._scrcpyProcess?.kill().catch(e => {
                     console.error(e);
                 });
             }
@@ -199,14 +198,14 @@ export class DeviceComponent implements OnInit, OnDestroy {
                     if (await this._deviceService.isScreenOn(this.ip()!) === true &&
                         !await this._deviceService.isRunning(this.ip()!, this._settingsService.getPackageName())) {
                         console.log('launch')
-                        
+
                         await this._deviceService.launch(this.ip()!, this._settingsService.getPackageName());
                         retryCount++;
                     } else {
                         retryCount = 0;
                     }
                 } finally {
-                    handle = setTimeout(check.bind(this), 1000 * Math.pow(2, retryCount));
+                    handle = setTimeout(check.bind(this), Math.min(10_000, 1000 * Math.pow(2, retryCount)));
                 }
             }
 
@@ -219,7 +218,7 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
         // Update battery
         effect((onCleanup) => {
-            if(this.state() !== State.Ready) {
+            if (this.state() !== State.Ready) {
                 return;
             }
 
@@ -229,14 +228,14 @@ export class DeviceComponent implements OnInit, OnDestroy {
                 this.batteryLevel.set(batteryLevel);
             });
 
-            onCleanup(subscription.unsubscribe);
+            onCleanup(() => subscription.unsubscribe());
         }, {
             allowSignalWrites: true
         });
     }
 
     ngOnDestroy(): void {
-        this.scrcpyProcess()?.kill();
+        this._scrcpyProcess?.kill();
     }
 
     ngOnInit(): void {
@@ -298,22 +297,27 @@ export class DeviceComponent implements OnInit, OnDestroy {
         this.localDevice.set(localDevice);
     }
 
-    async startMirror() {
-        if (this.isMirroring()) {
-            return;
-        }
-
-        this.isMirroring.set(true);
-        this._scrcpyService.spawnScrcpy(this.ip()!, this.lastPosition()).pipe(
-            finalize(() => {
-                this.isMirroring.set(false);
-                this.scrcpyProcess.set(undefined);
-            })
+    startMirroring(): Subscription {
+        return defer(() => {
+            return this._scrcpyService.spawnScrcpy(this.ip()!, this.lastPosition())
+        }).pipe(
+            tap({
+                error: () => this._scrcpyProcess = undefined,
+                complete: () => this._scrcpyProcess = undefined,
+            }),
+            retry({
+                delay: (e: any, c: number) => timer(Math.min(5000, 1000 * c)),
+                resetOnSuccess: true,
+            }),
+            repeat({
+                delay: 1000,
+            }),
+            subscribeOn(asyncScheduler)
         ).subscribe((e) => {
             switch (e.type) {
                 case "process":
                     console.log("set prorcess", e.process);
-                    this.scrcpyProcess.set(e.process);
+                    this._scrcpyProcess = e.process;
                     break;
                 case "stream":
                     if (e.pipe === 'stdout') {
