@@ -1,6 +1,6 @@
 use std::io;
 use std::io::Error;
-use adb_client::{Device, DeviceLong, DeviceState, RustADBError};
+use adb_client::{Device, DeviceState, RustADBError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -74,11 +74,6 @@ pub struct Paths {
 }
 
 impl Paths {
-    
-    pub fn default() -> Self {
-        Self { adb: None, scrcpy: None }
-    }
-    
     pub fn new(adb: Option<String>, scrcpy: Option<String>) -> Self {
         Self { adb, scrcpy }
     }

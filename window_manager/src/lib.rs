@@ -17,6 +17,7 @@ pub struct Position {
 }
 
 impl Position {
+    #[allow(dead_code)]
     pub(crate) fn default() -> Position {
         Position {
             x: 0,

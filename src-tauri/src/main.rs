@@ -2,14 +2,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::ffi::OsStr;
-use std::fmt::Debug;
 use std::net::{IpAddr, Ipv4Addr};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 use std::time::Duration;
 
-use log::{info, log, warn};
+use log::{info, warn};
 use network_interface::{NetworkInterface};
 use network_interface::NetworkInterfaceConfig;
 use tauri::{AppHandle, Manager, State};
@@ -19,10 +18,8 @@ use which::which;
 use adb_client::{AdbTcpConnection, RustADBError};
 use window_manager::WindowError;
 
-use crate::scrcpy::ScrCpy;
 use crate::structs::{LocalDevice, Paths, ZBBError};
 
-mod scrcpy;
 mod structs;
 
 const LOOPBACK: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
@@ -172,7 +169,7 @@ async fn connect_device<'a>(id: String, port: u16, paths: State<'a, Paths>) -> R
     Ok(ip_address.to_string())
 }
 
-/// Gets the IP address of a Android device
+/// Gets the IP address of an Android device
 #[tauri::command]
 fn get_ip(id: String) -> Result<String, ZBBError> {
     let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
@@ -222,11 +219,6 @@ fn is_match(lhs: Ipv4Addr, rhs: Ipv4Addr, netmask: Ipv4Addr) -> bool {
     netmask.octets().into_iter().enumerate().all(|(pos, mask)| {
         lhs.octets()[pos] & mask == rhs.octets()[pos] & mask
     })
-}
-
-#[tauri::command]
-async fn open_stream(id: String, app_handle: AppHandle) -> Result<(), ZBBError> {
-    ScrCpy::open_window(&id, &app_handle)
 }
 
 #[tauri::command]
@@ -289,7 +281,7 @@ async fn get_battery_level(id: String) -> Result<i32, ZBBError> {
     let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
 
     let level_bytes = adb.shell_command(&serial, vec!["dumpsys battery | grep level".into()])?;
-    let level_string = String::from_utf8(level_bytes).map_err(|it| ZBBError::Other("Konnte Batteriestand nicht holen.".into()))?;
+    let level_string = String::from_utf8(level_bytes).map_err(|_| ZBBError::Other("Konnte Batteriestand nicht holen.".into()))?;
 
     let level = level_string.split(':').into_iter().nth(1).and_then(|number| number.trim().parse::<i32>().ok());
 
@@ -313,7 +305,6 @@ fn main() {
             get_devices,
             connect_device,
             get_ip,
-            open_stream,
             get_adb_path,
             get_scrcpy_path,
             get_window_position,
