@@ -150,7 +150,17 @@ export class DeviceComponent implements OnInit, OnDestroy {
                 const subscription = this.startConnecting(this.id(), this.port());
                 onCleanup(() => subscription.unsubscribe());
             }
+        });
 
+        effect((onCleanup) => {
+            const remote = this.remoteDevice();
+            const local = this.localDevice();
+            const ip = this.ip();
+
+            if (ip && !local && !remote) {
+                const subscription = this.attemptConnection(ip);
+                onCleanup(() => subscription.unsubscribe());
+            }
         });
 
         // Start mirroring when toggle changes or we are connected
@@ -297,6 +307,12 @@ export class DeviceComponent implements OnInit, OnDestroy {
         this.localDevice.set(localDevice);
     }
 
+    private attemptConnection(ip: string): Subscription {
+        return timer(500).pipe(
+            switchMap(_ => from(this._deviceService.attemptConnection(ip, this.port())))
+        ).subscribe();
+    }
+
     startMirroring(): Subscription {
         return defer(() => {
             return this._scrcpyService.spawnScrcpy(this.ip()!, this.lastPosition())
@@ -327,8 +343,10 @@ export class DeviceComponent implements OnInit, OnDestroy {
                     }
                     break;
                 case "window":
-                    console.log(e.position);
-                    this.lastPosition.set(e.position);
+                    if(JSON.stringify(this.lastPosition()) !==JSON.stringify(e.position)) {
+                        console.log(e.position);
+                        this.lastPosition.set(e.position);
+                    }
                     break;
 
             }

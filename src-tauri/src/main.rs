@@ -6,6 +6,7 @@ use std::net::{IpAddr, Ipv4Addr};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::process::Command;
+use std::str::FromStr;
 use std::time::Duration;
 
 use log::{info, warn};
@@ -30,7 +31,7 @@ fn create_silent_command<S>(path: S) -> Command where S: AsRef<OsStr> {
     const CREATE_NO_WINDOW: u32 = 0x08000000;
     let mut cmd = Command::new(path);
     cmd.creation_flags(CREATE_NO_WINDOW);
-    
+
     cmd
 }
 
@@ -169,6 +170,17 @@ async fn connect_device<'a>(id: String, port: u16, paths: State<'a, Paths>) -> R
     Ok(ip_address.to_string())
 }
 
+#[tauri::command]
+async fn connect_to_ip(ip_address: String, port: u16) -> Result<(), ZBBError> {
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
+    let address = Ipv4Addr::from_str(&ip_address)
+        .map_err(|_| ZBBError::Other(format!("Invalid ip address: {}", ip_address)))?;
+
+    adb.connect(address, port)?;
+
+    Ok(())
+}
+
 /// Gets the IP address of an Android device
 #[tauri::command]
 fn get_ip(id: String) -> Result<String, ZBBError> {
@@ -291,6 +303,14 @@ async fn get_battery_level(id: String) -> Result<i32, ZBBError> {
     }
 }
 
+#[tauri::command]
+async fn kill_server() -> Result<(), ZBBError> {
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
+    adb.kill()?;
+
+    Ok(())
+}
+
 
 #[cfg(target_os = "windows")]
 fn is_windows() -> bool { true }
@@ -304,6 +324,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_devices,
             connect_device,
+            connect_to_ip,
             get_ip,
             get_adb_path,
             get_scrcpy_path,
@@ -313,7 +334,8 @@ fn main() {
             launch_app,
             shutdown_device,
             get_battery_level,
-            is_screen_on
+            is_screen_on,
+            kill_server
         ])
         .plugin(
             tauri_plugin_log::Builder::default()

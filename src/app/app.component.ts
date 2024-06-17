@@ -12,6 +12,8 @@ import {DeviceComponent} from "./device/device.component";
 import {SettingsComponent} from "./settings/settings.component";
 import {SettingsService} from "./settings.service";
 import {SbbDialogElement} from "@sbb-esta/lyne-elements/dialog.js";
+import {DeviceService} from "./device.service";
+import {firstValueFrom, timer} from "rxjs";
 
 @Component({
     selector: 'app-root',
@@ -25,8 +27,9 @@ export class AppComponent {
     packageName = signal(this._settingsService.getPackageName());
     scrcpyArguments = signal(this._settingsService.getScrcpyArguments());
     devices = signal<string[]>([]);
+    isKilling = signal<boolean>(false);
 
-    constructor(private _settingsService: SettingsService) {
+    constructor(private _settingsService: SettingsService, private _deviceService: DeviceService) {
         const devices = _settingsService.getDeviceSerials();
         while (devices.length < 2) {
             devices.push("");
@@ -60,5 +63,17 @@ export class AppComponent {
         this._settingsService.setPackageName(this.packageName());
         this._settingsService.setDeviceSerials(this.devices());
         this._settingsService.setScrcpyArguments(this.scrcpyArguments());
+    }
+
+    async killServer() {
+        try {
+            this.isKilling.set(true);
+            await this._deviceService.killServer();
+            await firstValueFrom(timer(3000));
+        } catch(e) {
+            console.error(e);
+        } finally {
+            this.isKilling.set(false);
+        }
     }
 }

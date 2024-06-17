@@ -63,5 +63,9 @@
 
     <sbb-divider/>
     <sbb-button (click)="openOverlay(overlay, $event)" size="m">Einstellungen</sbb-button>
+    <sbb-secondary-button (click)="killServer()" size="m" [disabled]="isKilling()" style="margin-left: var(--sbb-spacing-fixed-2x)" title="Kann bei Verbindungsproblemen helfen.">
+        <sbb-loading-indicator slot="icon" variant="circle" *ngIf="isKilling()"></sbb-loading-indicator>
+        Verbindung erneuern
+    </sbb-secondary-button>
     <sbb-toast id="warning-toast" icon-name="sign-exclamation-point-medium" />
 </sbb-container>
