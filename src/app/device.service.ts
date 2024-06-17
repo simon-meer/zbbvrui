@@ -63,6 +63,13 @@ export class DeviceService {
         })
     }
 
+    async killApp(id: string, packageName: string) {
+        return invoke<boolean>('kill_app', {
+            id,
+            'package': packageName
+        });
+    }
+
     async getBatteryLevel(id: string) {
         return invoke<number>('get_battery_level', {
             id

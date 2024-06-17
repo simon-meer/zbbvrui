@@ -311,6 +311,15 @@ async fn kill_server() -> Result<(), ZBBError> {
     Ok(())
 }
 
+#[tauri::command]
+async fn kill_app(id: String, package: String) -> Result<(), ZBBError> {
+    let serial = Some(id);
+    let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
+    adb.shell_command(&serial, vec!["am".to_string(), "force-stop".to_string(), package])?;
+
+    Ok(())
+}
+
 
 #[cfg(target_os = "windows")]
 fn is_windows() -> bool { true }
@@ -335,7 +344,8 @@ fn main() {
             shutdown_device,
             get_battery_level,
             is_screen_on,
-            kill_server
+            kill_server,
+            kill_app
         ])
         .plugin(
             tauri_plugin_log::Builder::default()
