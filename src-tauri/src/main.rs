@@ -31,7 +31,10 @@ const ADB_PORT: u16 = 5037;
 #[cfg(target_os = "windows")]
 fn create_silent_command<S>(path: S) -> Command where S: AsRef<OsStr> {
     const CREATE_NO_WINDOW: u32 = 0x08000000;
-    Command::new(path).creation_flags(CREATE_NO_WINDOW)
+    let mut cmd = Command::new(path);
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    
+    cmd
 }
 
 #[cfg(not(target_os = "windows"))]
