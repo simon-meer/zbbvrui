@@ -64,11 +64,17 @@ fn find_binary(name: &str, handle: AppHandle, search_path: bool) -> Option<Strin
         info!("Found it installed");
         return Some(name.to_string());
     }
+    
+    let file_ending = if is_windows() {
+        ".exe"
+    } else {
+        ""
+    };
 
     info!("Using the packaged binaries");
     handle
         .path_resolver()
-        .resolve_resource("scrcpy/scrcpy.exe")
+        .resolve_resource(format!("scrcpy/{}{}", name, file_ending))
         .and_then(|buf| buf.to_str().map(|s| s.to_string()))
 }
 
