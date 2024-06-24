@@ -89,4 +89,14 @@ export class DeviceService {
             port
         });
     }
+
+    shutdownDevice(id: string) {
+        return invoke<void>('shutdown_device', {
+            id
+        });
+    }
+
+    shutdownHost() {
+        return invoke<void>('shutdown_host');
+    }
 }

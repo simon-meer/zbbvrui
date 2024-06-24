@@ -16,3 +16,9 @@ sbb-button {
 sbb-form-field {
   width: 100%;
 }
+
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--sbb-spacing-fixed-2x);
+}

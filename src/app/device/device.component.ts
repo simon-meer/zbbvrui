@@ -21,16 +21,17 @@ import '@sbb-esta/lyne-elements/status.js';
 
 import {DeviceService} from "../device.service";
 import {
-    asyncScheduler, catchError,
-    defer, delay,
+    asyncScheduler,
+    defer,
     distinctUntilChanged,
     filter,
-    finalize, firstValueFrom,
     from,
-    interval,
-    map, repeat,
-    retry, subscribeOn,
-    Subscription, switchMap,
+    map,
+    repeat,
+    retry,
+    subscribeOn,
+    Subscription,
+    switchMap,
     tap,
     timer
 } from "rxjs";
@@ -252,6 +253,21 @@ export class DeviceComponent implements OnInit, OnDestroy {
         this.applySettings();
     }
 
+    shutdown() {
+        const remote = this.remoteDevice();
+        const local = this.localDevice();
+
+        if (remote?.state === DeviceState.Device) {
+            return this._deviceService.shutdownDevice(remote.identifier);
+        }
+
+        if (local?.state === DeviceState.Device) {
+            return this._deviceService.shutdownDevice(local.identifier);
+        }
+
+        return Promise.resolve();
+    }
+
     private startConnecting(id: string, port: number): Subscription {
         // Try connecting until the subscription has been canceled or the connection has been established
         return defer(() => {
@@ -343,7 +359,7 @@ export class DeviceComponent implements OnInit, OnDestroy {
                     }
                     break;
                 case "window":
-                    if(JSON.stringify(this.lastPosition()) !==JSON.stringify(e.position)) {
+                    if (JSON.stringify(this.lastPosition()) !== JSON.stringify(e.position)) {
                         console.log(e.position);
                         this.lastPosition.set(e.position);
                     }

@@ -1,6 +1,6 @@
 <sbb-container class="container" color="milk">
     @for (item of devices(); track trackByIndex; let i = $index) {
-        <app-device [name]="'VR'+(i+1)" [id]="item" [port]="5555+i" />
+        <app-device [name]="'VR'+(i+1)" [id]="item" [port]="5555+i"/>
     }
 
     <sbb-dialog #overlay (didClose)="onDialogClosed($event)">
@@ -36,7 +36,7 @@
             <div>
                 @for (item of devices(); track trackByIndex; let i = $index) {
                     <div style="margin: var(--sbb-spacing-fixed-2x)">
-                    <sbb-form-field error-space="none" size="m" width="default">
+                        <sbb-form-field error-space="none" size="m" width="default">
                             <label>Gerät {{ i + 1 }} (Serial ID)</label>
 
                             <input
@@ -62,10 +62,22 @@
     </sbb-dialog>
 
     <sbb-divider/>
-    <sbb-button (click)="openOverlay(overlay, $event)" size="m">Einstellungen</sbb-button>
-    <sbb-secondary-button (click)="killServer()" size="m" [disabled]="isKilling()" style="margin-left: var(--sbb-spacing-fixed-2x)" title="Kann bei Verbindungsproblemen helfen.">
-        <sbb-loading-indicator slot="icon" variant="circle" *ngIf="isKilling()"></sbb-loading-indicator>
-        Verbindung erneuern
-    </sbb-secondary-button>
-    <sbb-toast id="warning-toast" icon-name="sign-exclamation-point-medium" />
+
+    <div class="buttons">
+        <sbb-button (click)="shutdown()" size="m" [disabled]="isShuttingDown()">
+            <sbb-loading-indicator slot="icon" variant="circle" *ngIf="isShuttingDown()"></sbb-loading-indicator>
+            Alles herunterfahren
+        </sbb-button>
+        <sbb-secondary-button (click)="killServer()" size="m" [disabled]="isKilling()"
+                              title="Kann bei Verbindungsproblemen helfen.">
+            <sbb-loading-indicator slot="icon" variant="circle" *ngIf="isKilling()"></sbb-loading-indicator>
+            Verbindung erneuern
+        </sbb-secondary-button>
+
+        <div style="flex:1"></div>
+        <sbb-tertiary-button (click)="openOverlay(overlay, $event)" size="m" style="justify-self: end">Einstellungen
+        </sbb-tertiary-button>
+    </div>
+
+    <sbb-toast id="warning-toast" icon-name="sign-exclamation-point-medium"/>
 </sbb-container>

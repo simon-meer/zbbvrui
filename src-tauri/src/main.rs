@@ -12,6 +12,7 @@ use std::time::Duration;
 use log::{info, warn};
 use network_interface::{NetworkInterface};
 use network_interface::NetworkInterfaceConfig;
+use system_shutdown::{shutdown, sleep};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_log::LogTarget;
 use which::which;
@@ -294,6 +295,17 @@ async fn shutdown_device(id: String) -> Result<(), ZBBError> {
 }
 
 #[tauri::command]
+fn shutdown_host() -> Result<(), ZBBError> {
+    #[cfg(not(dev))]
+    shutdown()?;
+
+    #[cfg(dev)]
+    std::thread::sleep(Duration::from_millis(1000));
+        
+    Ok(())
+}
+
+#[tauri::command]
 async fn get_battery_level(id: String) -> Result<i32, ZBBError> {
     let serial = Some(id);
     let mut adb = AdbTcpConnection::new(LOOPBACK, ADB_PORT)?;
@@ -351,7 +363,8 @@ fn main() {
             get_battery_level,
             is_screen_on,
             kill_server,
-            kill_app
+            kill_app,
+            shutdown_host
         ])
         .plugin(
             tauri_plugin_log::Builder::default()

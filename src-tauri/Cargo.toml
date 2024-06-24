@@ -21,6 +21,7 @@ async-std = "1.12.0"
 window_manager = { path = "../window_manager"}
 network-interface = "2.0.0"
 which = "6.0.1"
+system_shutdown = "4.0.1"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

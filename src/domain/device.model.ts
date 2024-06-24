@@ -1,23 +1,23 @@
 export interface Device {
     /// Unique device identifier.
-    identifier: String,
+    identifier: string,
         /// Connection state of the device.
     state: DeviceState
 }
 
 export interface DeviceLong {
     /// Unique device identifier.
-    identifier: String,
+    identifier: string,
     /// Connection state of the device.
     state: DeviceState,
     /// Usb port used by the device.
-    usb: String,
+    usb: string,
     /// Product code.
-    product: String,
+    product: string,
     /// Device model.
-    model: String,
+    model: string,
     /// Device code.
-    device: String,
+    device: string,
     /// Transport identifier.
     transport_id: number,
 }
