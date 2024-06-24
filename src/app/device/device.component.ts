@@ -80,7 +80,7 @@ export class DeviceComponent implements OnInit, OnDestroy {
             return '';
         }
         if (batteryLevel > 75) {
-            return 'battery-level-full-small';
+            return 'battery-level-high-small';
         }
         if (batteryLevel > 50) {
             return 'battery-level-medium-small';
