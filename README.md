@@ -7,7 +7,7 @@ UI for ZBB VR.
 Installing:
 
 ```shell
-bun install --yarn
+bun install
 ```
 
 During development:
