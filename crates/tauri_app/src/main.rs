@@ -37,7 +37,7 @@ fn create_silent_command<S>(path: S) -> Command where S: AsRef<OsStr> {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn create_silent_command<S>(path: S) -> Command where S: AsRef<OsStr> + Debug {
+fn create_silent_command<S>(path: S) -> Command where S: AsRef<OsStr> {
     Command::new(path)
 }
 

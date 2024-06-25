@@ -1,0 +1,3 @@
+[workspace]
+members = ["tauri_app", "window_manager"]
+resolver = "2"
