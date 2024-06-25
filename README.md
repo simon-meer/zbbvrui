@@ -4,6 +4,12 @@ UI for ZBB VR.
 
 ## Building
 
+Installing:
+
+```shell
+bun install --yarn
+```
+
 During development:
 
 ```shell

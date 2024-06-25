@@ -1,0 +1,30 @@
+---
+"$schema": https://clew-resources.sbb-cloud.net/tekton-schema.json
+productName: zbbvrui
+pipelines:
+  - name: continuous
+    triggerType:
+      - GITEVENT
+      - USER
+    branchNamePrefixes:
+      - master
+      - feature
+    tasks:
+      - name: rust-build
+        taskRef: esta-custom-exec
+        params:
+          RUN_IMAGE: dockerio.docker.bin.sbb.ch/ivangabriele/tauri:debian-bullseye-18
+          SCRIPT: yarn --frozen-lockfile && yarn run tauri build
+        runAfter: git-clone
+  - name: release
+    triggerType:
+      - GITEVENT
+    versionTagEventPatterns:
+      - "^(\\d+\\.)(\\d+\\.)(\\*|\\d+)"
+notifications:
+  - type: EMAIL
+    enabled: true
+    eventTypes:
+      - FAILURE
+    recipients:
+      - "$actor"
