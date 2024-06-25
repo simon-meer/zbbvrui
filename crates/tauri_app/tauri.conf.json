@@ -3,7 +3,7 @@
     "beforeDevCommand": "bun run start",
     "beforeBuildCommand": "bun run build",
     "devPath": "http://localhost:1420",
-    "distDir": "../dist/zbbvrui/browser"
+    "distDir": "../../dist/zbbvrui/browser"
   },
   "package": {
     "productName": "zbbvrui",
