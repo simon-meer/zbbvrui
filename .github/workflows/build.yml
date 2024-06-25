@@ -38,7 +38,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           args: ${{ matrix.args }}
+          tauriScript: bun run tauri
       - uses: actions/upload-artifact@v4
         with:
-          name: bundle
+          name: bundle-${{ matrix.platform }}
           path: crates/target/release/bundle
