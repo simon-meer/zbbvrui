@@ -1,0 +1,11 @@
+<sbb-toggle #toggle size="s" [value]="phase()" (change)="onChange(toggle.value)" [disabled]="loading()" *ngIf="phase() != undefined">
+    <sbb-toggle-option value="Onboarding">
+        <sbb-icon slot="icon" name="robot-small"></sbb-icon>
+        Intro
+        <sbb-loading-indicator *ngIf="loading() && phase() === 'Onboarding'" />
+    </sbb-toggle-option>
+    <sbb-toggle-option value="Station">
+        <sbb-icon slot="icon" name="app-icon-small"></sbb-icon>
+        Bahnhof!
+    </sbb-toggle-option>
+</sbb-toggle>

@@ -45,6 +45,7 @@ import {SettingsService} from "../settings.service";
 import {Position} from "../../domain/position.model";
 import {ZBBError} from "../../domain/zbberror.model";
 import {NotificationService} from "../notification.service";
+import {PhaseComponent} from "./phase/phase.component";
 
 enum State {
     WaitingForDevice,
@@ -57,7 +58,8 @@ enum State {
     selector: 'app-device',
     standalone: true,
     imports: [
-        NgIf
+        NgIf,
+        PhaseComponent
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     templateUrl: './device.component.html',

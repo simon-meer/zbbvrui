@@ -76,6 +76,10 @@
                         Das Gerät ist bereit zum Streamen.
                     }
                 </div>
+
+                <sbb-status class="battery" *ngIf="batteryLevel() !== undefined" [iconName]="batteryLevelIcon()">
+                    {{ batteryLevel() }}%
+                </sbb-status>
             </sbb-status>
             <div class="buttons">
                 <sbb-toggle-check
@@ -91,9 +95,8 @@
                     Bildschirm anzeigen
                 </sbb-toggle-check>
 
-                <sbb-status *ngIf="batteryLevel() !== undefined" [iconName]="batteryLevelIcon()">
-                    {{ batteryLevel() }}%
-                </sbb-status>
+
+                <app-phase ip="127.0.0.1" *ngIf="state() === State.Ready" />
 
                 <sbb-toggle-check
                     #appCheck
@@ -105,9 +108,11 @@
                     label-position="after">
                     <sbb-icon slot="icon" name="play-small"></sbb-icon>
 
-                    App laufen lassen
+                    VR-App läuft immer
                 </sbb-toggle-check>
             </div>
+
+
         </sbb-step>
 
     </sbb-stepper>

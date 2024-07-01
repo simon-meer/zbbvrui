@@ -1,18 +1,7 @@
 import {Injectable} from '@angular/core';
 import {invoke} from "@tauri-apps/api/tauri";
 import {Child, Command} from "@tauri-apps/api/shell";
-import {
-    from,
-    map,
-    mergeWith,
-    Observable,
-    onErrorResumeNext,
-    ReplaySubject,
-    retry,
-    startWith,
-    switchMap, takeUntil,
-    timer
-} from "rxjs";
+import {from, map, mergeWith, Observable, ReplaySubject, retry, startWith, switchMap, takeUntil, timer} from "rxjs";
 import {Position} from "../domain/position.model";
 import {SettingsService} from "./settings.service";
 import {os} from "@tauri-apps/api";
@@ -104,16 +93,15 @@ export class ScrcpyService {
 
                 return cmd;
             }),
-            switchMap(cmd => from(cmd.spawn())),
+            switchMap(cmd => cmd.spawn()),
             switchMap((child) => {
                 return subject.pipe(
                     mergeWith(
                         timer(1000, 1000).pipe(
-                            switchMap(() => {
-                                return from(invoke<Position>('get_window_position', {
+                            switchMap(() =>
+                                invoke<Position>('get_window_position', {
                                     pid: child.pid
-                                }))
-                            }),
+                                })),
                             map(position => {
                                 return {
                                     type: 'window',

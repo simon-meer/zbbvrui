@@ -9,7 +9,18 @@ sbb-step-label {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    align-content: center;
 }
 .buttons sbb-toggle-check {
 
+}
+
+app-phase {
+    align-self: center;
+}
+
+sbb-status.battery {
+    position: absolute;
+    right: 0;
+    top: 0;
 }
