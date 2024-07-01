@@ -1,7 +1,10 @@
-use std::io;
-use std::io::Error;
 use adb_client::{Device, DeviceState, RustADBError};
 use serde::{Deserialize, Serialize};
+use std::io;
+use std::io::Error;
+use std::net::AddrParseError;
+use std::string::FromUtf8Error;
+use strum_macros::{Display, EnumString};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum LocalDeviceState {
@@ -24,11 +27,10 @@ impl From<DeviceState> for LocalDeviceState {
             DeviceState::Device => LocalDeviceState::Device,
             DeviceState::NoDevice => LocalDeviceState::NoDevice,
             DeviceState::Authorizing => LocalDeviceState::Authorizing,
-            DeviceState::Unauthorized => LocalDeviceState::Unauthorized
+            DeviceState::Unauthorized => LocalDeviceState::Unauthorized,
         }
     }
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalDeviceLong {
@@ -48,7 +50,6 @@ pub struct LocalDeviceLong {
     pub transport_id: u32,
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalDevice {
     /// Unique device identifier.
@@ -66,11 +67,10 @@ impl From<Device> for LocalDevice {
     }
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Paths {
     pub adb: Option<String>,
-    pub scrcpy: Option<String>
+    pub scrcpy: Option<String>,
 }
 
 impl Paths {
@@ -79,7 +79,6 @@ impl Paths {
     }
 }
 
-
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", content = "message")]
 pub enum ZBBError {
@@ -87,7 +86,7 @@ pub enum ZBBError {
     IO(String),
     NotInANetwork,
     NotInSameNetwork,
-    Other(String)
+    Other(String),
 }
 
 impl From<RustADBError> for ZBBError {
@@ -100,4 +99,23 @@ impl From<io::Error> for ZBBError {
     fn from(value: Error) -> Self {
         ZBBError::IO(value.to_string())
     }
+}
+
+impl From<AddrParseError> for ZBBError {
+    fn from(value: AddrParseError) -> Self {
+        ZBBError::IO(value.to_string())
+    }
+}
+
+impl From<FromUtf8Error> for ZBBError {
+    fn from(value: FromUtf8Error) -> Self {
+        ZBBError::IO(format!("Invalider String: {:?}", value))
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, EnumString, Display, PartialEq)]
+pub enum AppPhase {
+    Onboarding,
+    Station,
+    Windup,
 }

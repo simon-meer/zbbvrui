@@ -10,12 +10,14 @@ use tauri_plugin_log::LogTarget;
 use window_manager::WindowError;
 
 use crate::adb::*;
+use crate::communication::{get_phase, set_phase};
 use crate::structs::*;
 use crate::util::*;
 
 mod adb;
 mod structs;
 mod util;
+mod communication;
 
 #[tauri::command]
 async fn get_window_position(pid: u32) -> Result<window_manager::Position, WindowError> {
@@ -71,7 +73,9 @@ fn main() {
             is_screen_on,
             kill_server,
             kill_app,
-            shutdown_host
+            shutdown_host,
+            get_phase,
+            set_phase
         ])
         .plugin(
             tauri_plugin_log::Builder::default()
