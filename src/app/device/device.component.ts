@@ -199,7 +199,13 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
         // Keep app running
         effect((onCleanup) => {
-            if (this.state() !== State.Ready || !this.enforceAppActivated()) {
+            if (this.state() !== State.Ready) {
+                return;
+            }
+
+            if (!this.enforceAppActivated()) {
+                // Make sure the app isn't running
+                this._deviceService.killApp(this.ip()!, this._settingsService.getPackageName());
                 return;
             }
 
