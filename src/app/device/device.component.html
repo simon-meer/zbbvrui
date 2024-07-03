@@ -96,7 +96,7 @@
                 </sbb-toggle-check>
 
 
-                <app-phase ip="127.0.0.1" *ngIf="state() === State.Ready" />
+                <app-phase [ip]="ip()!" *ngIf="state() === State.Ready" />
 
                 <sbb-toggle-check
                     #appCheck
