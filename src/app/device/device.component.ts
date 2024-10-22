@@ -75,6 +75,16 @@ export class DeviceComponent implements OnInit, OnDestroy {
     public mirroringActivated = signal(false);
     public enforceAppActivated = signal(false);
     public lastPosition = signal<Position | undefined>(undefined);
+    public lastPositionSanitized = computed(() => {
+        const pos = this.lastPosition();
+        if(!pos) return undefined;
+        return {
+            x: Math.round(pos.x),
+            y: Math.round(pos.y),
+            width: Math.round(pos.width),
+            height: Math.round(pos.height)
+        };
+    });
     public batteryLevel = signal<number | undefined>(undefined);
     public batteryLevelIcon = computed(() => {
         const batteryLevel = this.batteryLevel();
@@ -339,7 +349,7 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
     startMirroring(): Subscription {
         return defer(() => {
-            return this._scrcpyService.spawnScrcpy(this.ip()!, this.lastPosition())
+            return this._scrcpyService.spawnScrcpy(this.ip()!, this.lastPositionSanitized())
         }).pipe(
             tap({
                 error: () => this._scrcpyProcess = undefined,
@@ -368,7 +378,7 @@ export class DeviceComponent implements OnInit, OnDestroy {
                     break;
                 case "window":
                     if (JSON.stringify(this.lastPosition()) !== JSON.stringify(e.position)) {
-                        console.log(e.position);
+                        console.log("Set pos: " + e.position);
                         this.lastPosition.set(e.position);
                     }
                     break;
