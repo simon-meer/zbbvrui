@@ -36,7 +36,7 @@ export class AppComponent {
 
     constructor(private _settingsService: SettingsService, private _deviceService: DeviceService, private _notificiationService: NotificationService) {
         const devices = _settingsService.getDeviceSerials();
-        while (devices.length < 2) {
+        while (devices.length < 3) {
             devices.push("");
         }
 

@@ -69,15 +69,22 @@ pub async fn launch_app(id: String, package: String) -> Result<String, ZBBError>
     // If we don't do this, the device sometimes gets into a weird state
     let _ = adb.shell_command(&serial, vec!["am broadcast -a com.oculus.vrpowermanager.prox_close".to_string()]);
 
-    let bytes = adb.shell_command(
-        &serial,
-        vec!["monkey".into(), "-p".into(), package, "1".into()],
-    )?;
+    let bytes = if package.contains("/") {
+        adb.shell_command(
+            &serial,
+            vec!["am".into(), "start".into(), "-n".into(), package],
+        )
+    } else {
+        adb.shell_command(
+            &serial,
+            vec!["monkey".into(), "-p".into(), package, "1".into()],
+        )
+    }?;
 
     // Enable proximity sensor again
     let _ = adb.shell_command(&serial, vec!["am broadcast -a com.oculus.vrpowermanager.automation_disable".to_string()]);
 
-    let result = String::from_utf8(bytes).unwrap();
+    let result = String::from_utf8(bytes)?;
     Ok(result)
 }
 

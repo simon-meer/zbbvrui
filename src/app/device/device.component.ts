@@ -77,7 +77,7 @@ export class DeviceComponent implements OnInit, OnDestroy {
     public lastPosition = signal<Position | undefined>(undefined);
     public lastPositionSanitized = computed(() => {
         const pos = this.lastPosition();
-        if(!pos) return undefined;
+        if (!pos) return undefined;
         return {
             x: Math.round(pos.x),
             y: Math.round(pos.y),
@@ -215,17 +215,18 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
             if (!this.enforceAppActivated()) {
                 // Make sure the app isn't running
-                this._deviceService.killApp(this.ip()!, this._settingsService.getPackageName());
+                this._deviceService.killApp(this.ip()!, this._settingsService.getCleanPackageName());
                 return;
             }
 
             // Ticks since last success
             let handle: number | undefined = undefined;
             let retryCount = 0;
+            let disposed = false;
             const check = async () => {
                 try {
                     if (await this._deviceService.isScreenOn(this.ip()!) === true &&
-                        !await this._deviceService.isRunning(this.ip()!, this._settingsService.getPackageName())) {
+                        !await this._deviceService.isRunning(this.ip()!, this._settingsService.getCleanPackageName())) {
                         console.log('launch')
 
                         await this._deviceService.launch(this.ip()!, this._settingsService.getPackageName());
@@ -234,13 +235,16 @@ export class DeviceComponent implements OnInit, OnDestroy {
                         retryCount = 0;
                     }
                 } finally {
-                    handle = setTimeout(check.bind(this), Math.min(10_000, 1000 * Math.pow(2, retryCount)));
+                    if (!disposed) {
+                        handle = setTimeout(check, Math.min(10_000, 1000 * Math.pow(2, retryCount)));
+                    }
                 }
             }
 
-            handle = setTimeout(check.bind(this), 1000);
+            handle = setTimeout(check, 1000);
 
             onCleanup(() => {
+                disposed = true;
                 clearTimeout(handle);
             });
         });

@@ -13,6 +13,16 @@ export class SettingsService {
         return localStorage.getItem('package') ?? 'ch.sbb.xr.zbbvr';
     }
 
+    getCleanPackageName(): string {
+        const packageName = this.getPackageName();
+        const slashPos = packageName.indexOf("/");
+        if(slashPos >= 0) {
+            return packageName.substring(0, slashPos);
+        }
+
+        return packageName;
+    }
+
     setPackageName(activity: string) {
         localStorage.setItem('package', activity);
     }
