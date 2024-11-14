@@ -215,7 +215,7 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
             if (!this.enforceAppActivated()) {
                 // Make sure the app isn't running
-                this._deviceService.killApp(this.ip()!, this._settingsService.getCleanPackageName());
+                // this._deviceService.killApp(this.ip()!, this._settingsService.getCleanPackageName());
                 return;
             }
 
@@ -273,6 +273,10 @@ export class DeviceComponent implements OnInit, OnDestroy {
 
     ngOnInit(): void {
         this.applySettings();
+    }
+
+    killApp(): void {
+        this._deviceService.killApp(this.ip()!, this._settingsService.getCleanPackageName());
     }
 
     shutdown() {
