@@ -56,6 +56,8 @@ fn shutdown_host() -> Result<(), ZBBError> {
 }
 
 fn main() {
+    let _ = fix_path_env::fix(); // <---- Add this
+
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             get_devices,
