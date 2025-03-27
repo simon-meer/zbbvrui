@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "adb_client"
 version = "1.0.1"
-source = "git+https://github.com/vmillet-dev/adb_client.git#b1639562faa9d0c776b4c3ebb659c9a83a9352d8"
+source = "git+https://github.com/simon-meer/adb_client.git?branch=master#b1639562faa9d0c776b4c3ebb659c9a83a9352d8"
 dependencies = [
  "byteorder",
  "chrono",
